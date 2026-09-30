@@ -57,7 +57,7 @@ def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4)
     @app.get("/api/geometry")
     def geometry_meta():
         return {**geometry.metadata, "mode": "DEMO" if demo else "LIVE",
-                "wire_format": "legacy16 + new24; ASIC family from CRS RUN_CONFIG", "frame_hz": frame_hz}
+                "wire_format": "legacy16 / Packet_v2 / batched", "frame_hz": frame_hz}
 
     @app.get("/api/geometry.bin")
     def geometry_binary():
