@@ -1,0 +1,173 @@
+/* No external assets or framework. Packet decoding stays on daq03. */
+'use strict';
+const $ = id => document.getElementById(id);
+let meta, pixels, seen, pausedSeen, pauseTime=0, paused=false, socket;
+let lastFrameAt=0, status=null, oldStatus=null, oldStatusAt=0, retry=null;
+const planes=[], modules=new Map();
+const fmt = n => n.toLocaleString(undefined,{maximumFractionDigits:1});
+const rateText = n => n >= 1000 ? `${(n/1000).toFixed(1)}k` : n.toFixed(0);
+const palette = new Uint8Array(256*3);
+for(let i=0;i<256;i++){
+  const t=i/255;
+  palette[3*i]=Math.round(4+93*t*t);
+  palette[3*i+1]=Math.round(13+232*t);
+  palette[3*i+2]=Math.round(20+170*t);
+}
+
+class Plane {
+  constructor(iog, holder) {
+    this.iog=iog; this.zoom=1; this.panX=0; this.panY=0;
+    const box=document.createElement('div');box.className='plane';
+    box.innerHTML=`<h3>IOG ${iog}<span id="rate-${iog}">waiting</span></h3><canvas aria-label="IO group ${iog} raw activity"></canvas>`;
+    holder.appendChild(box);this.box=box;this.canvas=box.querySelector('canvas');
+    this.ctx=this.canvas.getContext('2d',{alpha:false});
+    this.tiles=meta.tiles.filter(t=>t.iog===iog).map(t=>{
+      const image=document.createElement('canvas');image.width=t.width;image.height=t.height;
+      const ctx=image.getContext('2d',{alpha:false}),data=ctx.createImageData(t.width,t.height);
+      for(let p=0;p<data.data.length;p+=4){data.data[p]=4;data.data[p+1]=13;data.data[p+2]=20;data.data[p+3]=255;}
+      const lookup=new Int32Array(t.width*t.height);lookup.fill(-1);
+      const offsets=new Uint32Array(t.count);
+      for(let id=t.start;id<t.start+t.count;id++){
+        const [col,row]=pixel(id);const at=(t.height-1-row)*t.width+col;lookup[at]=id;offsets[id-t.start]=at*4;
+      }
+      return {...t,image,ctx,data,lookup,offsets};
+    });
+    this.xMin=Math.min(...this.tiles.map(t=>t.x_min-t.pitch/2));
+    this.xMax=Math.max(...this.tiles.map(t=>t.x_min+(t.width-.5)*t.pitch));
+    this.yMin=Math.min(...this.tiles.map(t=>t.y_min-t.pitch/2));
+    this.yMax=Math.max(...this.tiles.map(t=>t.y_min+(t.height-.5)*t.pitch));
+    this.canvas.addEventListener('wheel',e=>{e.preventDefault();this.zoom=Math.max(1,Math.min(12,this.zoom*Math.exp(-e.deltaY*.001)));},{passive:false});
+    let drag=null;
+    this.canvas.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];this.canvas.setPointerCapture(e.pointerId);});
+    this.canvas.addEventListener('pointerup',()=>{drag=null;});
+    this.canvas.addEventListener('pointercancel',()=>{drag=null;});
+    this.canvas.addEventListener('pointermove',e=>{
+      if(drag){const r=this.canvas.width/this.canvas.getBoundingClientRect().width;this.panX+=(e.clientX-drag[0])*r;this.panY+=(e.clientY-drag[1])*r;drag=[e.clientX,e.clientY];}
+      this.hover(e);
+    });
+    this.canvas.addEventListener('pointerleave',()=>{$('tooltip').hidden=true;});
+    this.canvas.addEventListener('dblclick',()=>this.reset());
+  }
+  reset(){this.zoom=1;this.panX=this.panY=0;}
+  transform(){
+    const c=this.canvas,r=c.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,1.5);
+    const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
+    if(c.width!==w||c.height!==h){c.width=w;c.height=h;}
+    const s=Math.min((w-16)/(this.xMax-this.xMin),(h-18)/(this.yMax-this.yMin))*this.zoom;
+    return {s,ox:w/2+this.panX-s*(this.xMin+this.xMax)/2,oy:h/2+this.panY+s*(this.yMin+this.yMax)/2};
+  }
+  draw(now, ages, brightness){
+    if(this.canvas.getBoundingClientRect().width===0)return;
+    const {s,ox,oy}=this.transform(),ctx=this.ctx;
+    ctx.fillStyle='#07121a';ctx.fillRect(0,0,this.canvas.width,this.canvas.height);ctx.imageSmoothingEnabled=false;
+    for(const t of this.tiles){
+      const rgba=t.data.data;
+      for(let id=t.start;id<t.start+t.count;id++){
+        const last=ages[id];
+        const ai=last===0 ? brightness.length-1 : Math.max(0,Math.min(brightness.length-1,Math.floor((now-last)/16)));
+        const color=brightness[ai]*3,at=t.offsets[id-t.start];
+        rgba[at]=palette[color];rgba[at+1]=palette[color+1];rgba[at+2]=palette[color+2];
+      }
+      t.ctx.putImageData(t.data,0,0);
+      const x=ox+s*(t.x_min-t.pitch/2),y=oy-s*(t.y_min+(t.height-.5)*t.pitch),w=t.width*t.pitch*s,h=t.height*t.pitch*s;
+      ctx.drawImage(t.image,x,y,w,h);ctx.strokeStyle='#284352';ctx.lineWidth=.8;ctx.strokeRect(x,y,w,h);
+      if(w>28){ctx.fillStyle='#a4b9c8';ctx.font='9px system-ui';ctx.fillText(`T${t.tile}`,x+3,y+11);}
+    }
+  }
+  hover(e){
+    const r=this.canvas.getBoundingClientRect(),{s,ox,oy}=this.transform();
+    const x=((e.clientX-r.left)*this.canvas.width/r.width-ox)/s;
+    const y=(oy-(e.clientY-r.top)*this.canvas.height/r.height)/s;
+    for(const t of this.tiles){
+      const col=Math.round((x-t.x_min)/t.pitch),row=Math.round((y-t.y_min)/t.pitch);
+      if(col<0||row<0||col>=t.width||row>=t.height)continue;
+      const id=t.lookup[(t.height-1-row)*t.width+col];if(id<0)continue;
+      const p=pixel(id),ages=paused?pausedSeen:seen,now=paused?pauseTime:performance.now();
+      const age=ages[id] ? `${Math.max(0,(now-ages[id])/1000).toFixed(2)} s ago` : 'not observed';
+      $('tooltip').textContent=`IOG ${t.iog}  ·  Tile ${t.tile}  (geometry ${t.geometry_tile})\nChip ${p[2]}  ·  Channel ${p[3]}  ·  Pixel ${id}\nX ${(t.x_min+col*t.pitch).toFixed(2)} mm  /  Y ${(t.y_min+row*t.pitch).toFixed(2)} mm\nLast arrival: ${age}`;
+      $('tooltip').hidden=false;$('tooltip').style.left=Math.min(e.clientX+14,window.innerWidth-320)+'px';$('tooltip').style.top=Math.min(e.clientY+14,window.innerHeight-125)+'px';return;
+    }
+    $('tooltip').hidden=true;
+  }
+}
+function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUint16(at+2,true),pixels.getUint8(at+4),pixels.getUint8(at+5)];}
+function connect(){
+  const scheme=location.protocol==='https:'?'wss:':'ws:';
+  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}`);socket.binaryType='arraybuffer';
+  socket.onopen=()=>{seen.fill(0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
+  socket.onmessage=event=>{
+    try{
+      const d=new DataView(event.data);
+      if(d.byteLength<20||d.getUint32(0,false)!==0x52445031)throw new Error('Unsupported display frame');
+      const seq=d.getUint32(4,true),count=d.getUint32(8,true);
+      if(d.byteLength!==20+count*8)throw new Error('Bad display frame length');
+      const now=performance.now();
+      for(let j=0;j<count;j++){
+        const off=20+j*8,id=d.getUint32(off,true),age=d.getFloat32(off+4,true);
+        if(id>=seen.length||!Number.isFinite(age)||age<0)throw new Error('Bad pixel update');
+        seen[id]=age>1e8?0:now-age*1000;
+        // A negative performance timestamp is valid for an old hit; zero means unseen.
+        if(seen[id]===0&&age<=1e8)seen[id]=-.001;
+      }
+      lastFrameAt=now;socket.send(String(seq));
+    }catch(err){$('notice').textContent=err.message;socket.close();}
+  };
+  socket.onclose=e=>{if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
+  socket.onerror=()=>socket.close();
+}
+async function updateStatus(){
+  try{
+    const res=await fetch('/api/status',{cache:'no-store'});if(!res.ok)throw new Error('Status unavailable');
+    status=await res.json();const now=performance.now(),dt=(now-oldStatusAt)/1000;
+    let total=0,receiving=0,bad=0,unknown=0,malformed=0;
+    for(const s of status.sources){
+      const before=oldStatus?.sources.find(p=>p.iog===s.iog);
+      const rate=before&&dt>0?Math.max(0,s.mapped_hits-before.mapped_hits)/dt:0;
+      total+=rate;if(s.rx_age_s!==null&&s.rx_age_s<3)receiving++;
+      bad+=s.bad_parity;unknown+=s.unmapped_hits;malformed+=s.malformed;
+      $(`rate-${s.iog}`).textContent=s.rx_age_s===null?'waiting':s.rx_age_s>3?'silent':`${rateText(rate)} Hz`;
+    }
+    $('rate').textContent=fmt(total);$('sources').textContent=`${receiving} / ${meta.iogs.length}`;
+    $('errors').textContent=`Since collector start: ${fmt(bad)} bad-parity hits excluded · ${fmt(unknown)} unmapped hits · ${fmt(malformed)} malformed messages.`;
+    let notice=meta.mode==='DEMO'?'DEMO — synthetic geometry and activity. No PACMAN connections.':'LIVE — PacMon tile layout · legacy16 / LArPix-v2 · no drift reconstruction or clock alignment.';
+    if(!status.collector_healthy)notice+='  COLLECTOR NOT HEALTHY — activity may be stale.';
+    if(malformed>0)notice+='  Check wire format: malformed messages were rejected.';
+    if(unknown>0)notice+='  Some accepted hits are absent from the selected geometry.';
+    $('notice').textContent=notice;$('notice').className=(!status.collector_healthy||malformed||unknown)?'warning':'';
+    oldStatus=status;oldStatusAt=now;
+  }catch(err){status=null;$('notice').textContent='Status unavailable — do not interpret the view as live.';$('notice').className='warning';}
+}
+async function main(){
+  const response=await fetch('/api/geometry');if(!response.ok)throw new Error('Geometry metadata unavailable');
+  meta=await response.json();const b=await (await fetch('/api/geometry.bin')).arrayBuffer();
+  if(b.byteLength!==meta.n_pixels*8||meta.record_bytes!==8)throw new Error('Geometry version/length mismatch');
+  pixels=new DataView(b);seen=new Float64Array(meta.n_pixels);
+  $('mode').textContent=meta.mode;$('mode').classList.toggle('demo',meta.mode==='DEMO');$('pixels').textContent=fmt(meta.n_pixels);
+  for(const m of [...new Set(meta.tiles.map(t=>t.module))]){
+    const box=document.createElement('section');box.className='module';
+    box.innerHTML=`<h2>Module ${m}<span>ANODE ACTIVITY</span></h2><div class="planes"></div><div class="tilehint">Physical tile positions · independent IO groups</div>`;
+    $('modules').appendChild(box);modules.set(m,box);
+    const opt=document.createElement('option');opt.value=String(m);opt.textContent=`Module ${m}`;$('module').appendChild(opt);
+    for(const iog of meta.iogs.filter(i=>Math.floor((i-1)/2)===m))planes.push(new Plane(iog,box.querySelector('.planes')));
+  }
+  $('module').onchange=()=>{for(const [m,box]of modules)box.hidden=$('module').value!=='all'&&String(m)!==$('module').value;$('modules').classList.toggle('focus',$('module').value!=='all');};
+  $('pause').onclick=()=>{paused=!paused;if(paused){pausedSeen=seen.slice();pauseTime=performance.now();}$('pause').textContent=paused?'Resume live':'Pause view';};
+  $('reset').onclick=()=>planes.forEach(p=>p.reset());
+  $('full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});};
+  $('decay').oninput=()=>{$('decayLabel').textContent=`${Number($('decay').value).toFixed(2)} s`;};
+  connect();await updateStatus();setInterval(updateStatus,1000);
+  let lastDraw=0,nframes=0,fpsStart=performance.now(),lastTau=-1,brightness;
+  function render(now){
+    requestAnimationFrame(render);
+    if(now-lastDraw<1000/Number($('targetFps').value)-1)return;
+    lastDraw=now;const tau=Number($('decay').value);
+    if(tau!==lastTau){brightness=new Uint8Array(Math.ceil(tau*1000*8/16)+1);for(let i=0;i<brightness.length-1;i++)brightness[i]=Math.round(255*Math.exp(-i*16/(tau*1000)));lastTau=tau;}
+    const fresh=lastFrameAt>0&&now-lastFrameAt<3500&&status?.collector_healthy;
+    $('modules').classList.toggle('offline',!fresh);
+    $('connection').textContent=fresh?(paused?'View paused · ingest continues':'Receiving snapshots'):'Stream stale / waiting';
+    for(const plane of planes)plane.draw(paused?pauseTime:now,paused?pausedSeen:seen,brightness);
+    nframes++;if(now-fpsStart>1000){$('fps').textContent=(nframes*1000/(now-fpsStart)).toFixed(0);nframes=0;fpsStart=now;}
+  }
+  requestAnimationFrame(render);
+}
+main().catch(err=>{$('notice').textContent=`Startup failed: ${err.message}`;$('notice').className='warning';console.error(err);});

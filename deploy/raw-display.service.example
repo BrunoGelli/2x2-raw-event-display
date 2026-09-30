@@ -1,0 +1,22 @@
+# Example only. Review user, paths, bind address, memory policy and subnet access.
+# Do not install until the one-PACMAN commissioning check is complete.
+[Unit]
+Description=2x2 read-only raw phosphor display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=acdaq
+WorkingDirectory=/home/acd/acdaq/2x2-raw-event-display
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/acd/acdaq/2x2-raw-event-display/.venv/bin/raw-display serve --geometry-dir /home/acd/acdaq/2x2-raw-event-display/layout --host 0.0.0.0 --port 8765
+Nice=10
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+TimeoutStopSec=10
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
