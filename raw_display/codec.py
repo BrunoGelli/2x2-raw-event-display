@@ -9,6 +9,7 @@ paying NumPy/Python setup costs once per ~5-10-word PACMAN message.
 """
 from dataclasses import dataclass
 import struct
+from typing import Optional
 import numpy as np
 
 HEADER = struct.Struct("<cIxH")
@@ -39,7 +40,7 @@ class Hits:
     timestamp: np.ndarray
     receipt_timestamp: np.ndarray
     counters: dict
-    diagnostic: str | None = None
+    diagnostic: Optional[str] = None
 
 
 def odd_parity(payload):
