@@ -21,3 +21,12 @@ Environment: Python 3.13.5, NumPy 2.3.5, Linux x86_64. These are local measureme
 The complete production geometry JSONs were not available as local test fixtures. Geometry tests used explicit synthetic PacMon-format fixtures; the production loader must be run with the real files using `raw-display check`. The downloader is pinned to upstream Git blob hashes but was not exercised end-to-end in this network-restricted container.
 
 No connection was made to a real PACMAN, daq03, ops01, or the production DAQ. Confirm the legacy16/v2 wire format, imported tile positions, CPU/network headroom and normal DAQ/PacMon behavior with the one-source probe before starting all sources. No claim of lossless raw reception is made.
+
+
+## Production-debugging correction — 2026-09-30
+
+The first daq03 probe exposed a decoder bug: the initial display rejected valid LArPix data when the downstream-marker bit was set, while PacMon's ADC/rate path records direction but does not reject on it. v0.2.0 removes that cut and adds per-second raw receive/packet-type/parity/direction diagnostics.
+
+v0.2.0 also adds strict support for both known PACMAN envelopes (legacy 8+16-byte and new v1.0 24+24-byte framing), reads the ASIC packet family from the active CRS `RUN_CONFIG.json`, and refuses every web bind address except `127.0.0.1`.
+
+Local post-fix regression: 29 pytest cases passed. On the same development container, the deliberately small-message synthetic benchmark gave ~95.7 khit/s at 8 words/message and ~706.5 khit/s at 64 words/message. The 8-word result is a reminder that per-message Python overhead matters: correctness should be established on daq03 first, then representative daq03 message batching/rates should be measured before claiming 330 khit/s headroom. Current collector batching can be optimized without changing the browser/API architecture.

@@ -1,4 +1,5 @@
-# Example only. Review user, paths, bind address, memory policy and subnet access.
+# Example only. Review user, paths and memory policy.
+# SECURITY: the application intentionally refuses every bind address except 127.0.0.1.
 # Do not install until the one-PACMAN commissioning check is complete.
 [Unit]
 Description=2x2 read-only raw phosphor display
@@ -10,7 +11,7 @@ Type=simple
 User=acdaq
 WorkingDirectory=/home/acd/acdaq/2x2-raw-event-display
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/home/acd/acdaq/2x2-raw-event-display/.venv/bin/raw-display serve --geometry-dir /home/acd/acdaq/2x2-raw-event-display/layout --host 0.0.0.0 --port 8765
+ExecStart=/home/acd/acdaq/2x2-raw-event-display/.venv/bin/raw-display serve --geometry-dir /home/acd/acdaq/2x2-raw-event-display/layout --host 127.0.0.1 --port 8765
 Nice=10
 Restart=on-failure
 RestartSec=10

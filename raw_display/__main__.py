@@ -8,7 +8,8 @@ import time
 import numpy as np
 from .codec import make_message, decode
 from .geometry import demo_geometry, load_geometry, download_geometry
-from .runtime import DEFAULT_IO, read_endpoints, start_collector, stop_collector, snapshot, COL
+from .runtime import (DEFAULT_IO, DEFAULT_RUN_CONFIG, read_endpoints, read_asic_versions,
+                      start_collector, stop_collector, snapshot, COL)
 
 
 def positive(value):
@@ -16,6 +17,14 @@ def positive(value):
     if not np.isfinite(v) or v <= 0:
         raise argparse.ArgumentTypeError("must be a positive finite number")
     return v
+
+    
+
+def loopback_host(value):
+    """Fermilab deployment policy for this application: loopback only."""
+    if value != "127.0.0.1":
+        raise argparse.ArgumentTypeError("raw-display may bind only to 127.0.0.1")
+    return value
 
 
 def benchmark(geometry, words=1024, messages=2000):
@@ -56,6 +65,8 @@ def parser():
         s = sub.add_parser(name)
         s.add_argument("--pacman-config", default=DEFAULT_IO)
         s.add_argument("--geometry-dir", default="layout")
+        s.add_argument("--run-config", default=DEFAULT_RUN_CONFIG,
+                       help="authoritative CRS RUN_CONFIG.json for io_group_asic_version_")
         s.add_argument("--iog", nargs="+", type=int, help="subset from pacman.json; default all")
         if name in ("serve", "probe"):
             s.add_argument("--hwm", type=int, default=128, help="receive HWM in messages, not hits")
@@ -64,7 +75,8 @@ def parser():
     d = sub.add_parser("demo", help="synthetic geometry/activity; no PACMAN connections")
     d.add_argument("--demo-rate", type=positive, default=330000)
     for s in (sub.choices["serve"], d):
-        s.add_argument("--host", default="127.0.0.1")
+        s.add_argument("--host", type=loopback_host, default="127.0.0.1",
+                       help="web bind address; intentionally restricted to 127.0.0.1")
         s.add_argument("--port", type=int, default=8080)
         s.add_argument("--frame-hz", type=positive, default=10)
         s.add_argument("--max-clients", type=int, default=4)
@@ -92,23 +104,31 @@ def main():
             return
         demo = args.command == "demo"
         endpoints = {} if demo else read_endpoints(args.pacman_config, args.iog)
+        versions = ({iog: 2 for iog in range(1, 9)} if demo
+                    else read_asic_versions(args.run_config, endpoints))
         geo = demo_geometry() if demo else load_geometry(args.geometry_dir, endpoints)
-        print(f"{'DEMO (no hardware)' if demo else 'LEGACY16 / LARPIX-V2'}: "
-              f"{len(geo.pixels):,} geometry pixels, IO groups {geo.metadata['iogs']}", flush=True)
+        geo.metadata["asic_versions"] = versions
+        print(f"{'DEMO (no hardware)' if demo else 'PACMAN AUTO-FRAME'}: "
+              f"{len(geo.pixels):,} geometry pixels, IO groups {geo.metadata['iogs']}, "
+              f"ASIC packet families {versions}", flush=True)
         if args.command == "check":
             for t in geo.metadata["tiles"]:
                 print(f"IOG {t['iog']} tile {t['tile']} -> geometry tile {t['geometry_tile']}: "
                       f"{t['count']} pixels, {t['width']}x{t['height']}")
+            print(f"ASIC packet families from {args.run_config}: {versions}")
             print("No sockets were opened. Geometry SHA256:")
             print(json.dumps(geo.metadata["provenance"], indent=2))
             return
         if not demo and not 1 <= args.hwm <= 10000:
             raise ValueError("HWM must be in 1..10000 messages")
         if args.command in ("demo", "serve"):
+            if args.host != "127.0.0.1":
+                raise ValueError("raw-display may bind only to 127.0.0.1")
             if not 1 <= args.port <= 65535 or not 0.5 <= args.frame_hz <= 30 or not 1 <= args.max_clients <= 16:
                 raise ValueError("port 1..65535, frame-hz 0.5..30, max-clients 1..16 required")
         shared, proc = start_collector(geo, endpoints, demo=demo,
-            demo_rate=getattr(args, "demo_rate", 330000), hwm=getattr(args, "hwm", 128))
+            demo_rate=getattr(args, "demo_rate", 330000), hwm=getattr(args, "hwm", 128),
+            asic_versions=versions)
         try:
             if args.command == "probe":
                 start, last = time.monotonic(), time.monotonic()
@@ -120,12 +140,22 @@ def main():
                     if not proc.is_alive():
                         raise RuntimeError("collector process failed")
                     if previous is not None:
+                        dt = now - last
                         for iog in endpoints:
-                            rate = (stats[iog, COL["mapped_hits"]] - previous[iog, COL["mapped_hits"]]) / (now-last)
-                            print(f"IOG {iog}: {rate:,.0f} mapped hits/s; "
-                                  f"avg_words/msg={stats[iog,COL['words']]/max(1,stats[iog,COL['messages']]):.1f} "
-                                  f"malformed={int(stats[iog,COL['malformed']])} "
-                                  f"unmapped={int(stats[iog,COL['unmapped_hits']])}", flush=True)
+                            delta = stats[iog] - previous[iog]
+                            r = lambda key: delta[COL[key]] / dt
+                            frames = f"legacy/new={r('legacy_messages'):,.0f}/{r('new24_messages'):,.0f}"
+                            ptypes = "/".join(f"{r('packet_type_'+str(k)):,.0f}" for k in range(4))
+                            print(
+                                f"IOG {iog} [ASIC v{versions[iog]}]: "
+                                f"rx={r('messages'):,.0f} msg/s {r('bytes')/1e6:.2f} MB/s; "
+                                f"words={r('words'):,.0f}/s D={r('data_words'):,.0f}/s; "
+                                f"ptype0/1/2/3={ptypes}/s; "
+                                f"data={r('data_hits'):,.0f}/s valid={r('valid_data_hits'):,.0f}/s "
+                                f"U/D={r('upstream'):,.0f}/{r('downstream'):,.0f}/s; "
+                                f"mapped={r('mapped_hits'):,.0f}/s unmapped={r('unmapped_hits'):,.0f}/s; "
+                                f"{frames}; nonDmsg={r('nondata_messages'):,.0f}/s "
+                                f"malformed+={int(delta[COL['malformed']])}", flush=True)
                     previous, last = stats, now
                 print("Probe ended. Transport drops are not measurable from received message counts.")
             else:

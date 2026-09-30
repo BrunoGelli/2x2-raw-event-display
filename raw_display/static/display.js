@@ -129,7 +129,7 @@ async function updateStatus(){
     }
     $('rate').textContent=fmt(total);$('sources').textContent=`${receiving} / ${meta.iogs.length}`;
     $('errors').textContent=`Since collector start: ${fmt(bad)} bad-parity hits excluded · ${fmt(unknown)} unmapped hits · ${fmt(malformed)} malformed messages.`;
-    let notice=meta.mode==='DEMO'?'DEMO — synthetic geometry and activity. No PACMAN connections.':'LIVE — PacMon tile layout · legacy16 / LArPix-v2 · no drift reconstruction or clock alignment.';
+    let notice=meta.mode==='DEMO'?'DEMO — synthetic geometry and activity. No PACMAN connections.':'LIVE — PacMon tile layout · PACMAN framing auto-detected · ASIC family from CRS run configuration · no drift reconstruction or clock alignment.';
     if(!status.collector_healthy)notice+='  COLLECTOR NOT HEALTHY — activity may be stale.';
     if(malformed>0)notice+='  Check wire format: malformed messages were rejected.';
     if(unknown>0)notice+='  Some accepted hits are absent from the selected geometry.';

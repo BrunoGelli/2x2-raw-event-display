@@ -6,10 +6,13 @@ import numpy as np
 import pytest
 import zmq
 from fastapi.testclient import TestClient
-from raw_display.codec import HEADER, WORD, DecodeError, decode, make_message
+from raw_display.codec import (HEADER, WORD, NEW_HEADER, NEW_WORD, DecodeError,
+                               decode, make_message)
 from raw_display.geometry import demo_geometry, build_geometry, load_geometry
-from raw_display.runtime import read_endpoints, make_shared, snapshot, start_collector, stop_collector, COL
+from raw_display.runtime import (read_endpoints, read_asic_versions, make_shared, snapshot,
+                                 start_collector, stop_collector, COL)
 from raw_display.server import create_app, encode_frame, FRAME_HEADER, UPDATE
+from raw_display.__main__ import loopback_host
 
 
 @pytest.fixture(scope="module")
@@ -47,8 +50,7 @@ def test_vectorized_fields(size):
 
 
 @pytest.mark.parametrize("raw", [b"", b"D123", HEADER.pack(b"D", 0, 1),
-    HEADER.pack(b"!", 0, 0), HEADER.pack(b"D", 0, 0)+b"0"*16,
-    HEADER.pack(b"D", 0, 1)+b"0"*24])
+    HEADER.pack(b"D", 0, 0)+b"0"*16, HEADER.pack(b"D", 0, 1)+b"0"*24])
 def test_reject_malformed(raw):
     with pytest.raises(DecodeError):
         decode(raw)
@@ -60,11 +62,40 @@ def test_parity_downstream_and_nondata():
     raw[8+16+15] ^= 64 | 128  # Downstream + repair parity on second.
     raw[8+32+8] ^= 2  # Config-write packet, excluded irrespective of parity.
     hit = decode(raw)
-    assert hit.channel.tolist() == [3]
+    assert hit.channel.tolist() == [1, 3]  # valid downstream data is displayable
     assert hit.counters["bad_parity"] == 1
     assert hit.counters["downstream"] == 1
+    assert hit.counters["upstream"] == 2
     assert hit.counters["other_packets"] == 1
 
+
+
+def test_nondata_message_is_not_malformed():
+    hit = decode(HEADER.pack(b"!", 0, 0))
+    assert len(hit.channel) == 0
+    assert hit.counters["nondata_messages"] == 1
+    assert hit.counters["legacy_messages"] == 1
+
+
+@pytest.mark.parametrize("version,envelope,adc", [(2,"legacy16",200),(2,"new24",200),
+                                                   (3,"legacy16",900),(3,"new24",900)])
+def test_supported_envelopes_and_asic_families(version, envelope, adc):
+    raw = make_message([17,18], [11,12], [3,4], [adc,adc],
+                       asic_version=version, envelope=envelope, downstream=[False,True])
+    hit = decode(raw, version)
+    assert hit.channel.tolist() == [3,4]
+    assert hit.adc.tolist() == [adc,adc]
+    assert hit.counters["valid_data_hits"] == 2
+    assert hit.counters["upstream"] == hit.counters["downstream"] == 1
+    assert hit.counters["new24_messages" if envelope == "new24" else "legacy_messages"] == 1
+
+
+def test_wrong_asic_family_is_visible_in_packet_type_counters():
+    raw = make_message([1], [11], [2], 900, asic_version=3)
+    hit = decode(raw, 2)
+    assert len(hit.channel) == 0
+    assert hit.counters["packet_type_1"] == 1
+    assert hit.counters["data_hits"] == 0
 
 def test_special_words():
     words = np.zeros(3, dtype=WORD)
@@ -114,6 +145,21 @@ def test_config_is_authoritative(tmp_path):
     with pytest.raises(ValueError):
         read_endpoints(p)
 
+
+
+def test_run_config_controls_asic_family(tmp_path):
+    p = tmp_path/"RUN_CONFIG.json"
+    p.write_text(json.dumps({"io_group_asic_version_":{"1":2,"5":"2b","7":"2d","8":3}}))
+    assert read_asic_versions(p, [1,5,7,8]) == {1:2,5:2,7:2,8:3}
+    with pytest.raises(ValueError):
+        read_asic_versions(p, [2])
+
+
+def test_web_bind_is_loopback_only():
+    assert loopback_host("127.0.0.1") == "127.0.0.1"
+    for host in ("0.0.0.0", "localhost", "192.168.2.10", "::1"):
+        with pytest.raises(Exception):
+            loopback_host(host)
 
 def test_slow_client_diff_catches_skipped_snapshots():
     a = np.array([0.,0.,0.]); b = np.array([10.,0.,0.]); c=np.array([10.,20.,0.])
