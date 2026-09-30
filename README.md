@@ -81,7 +81,7 @@ Live/probe/check also read the ASIC-family map from the active CRS run configura
 /home/acd/acdaq/CRS_DAQ/daq0/crs_daq/RUN_CONFIG.json
 ```
 
-Specifically, `io_group_asic_version_` is authoritative for payload decoding. Values `2`, `2b`, and `2d` use the Packet_v2 layout; `3`/`3a` use Packet_v3. Unknown or missing entries fail startup rather than guessing. Use `--run-config` only when intentionally selecting another run configuration.
+Specifically, `io_group_asic_version_` is checked once at startup. This display intentionally supports only Packet_v2-compatible families (`2`, `2a`, `2b`, `2d`). A v3-family selection fails startup instead of adding a branch to the live hot path. Use `--run-config` only when intentionally selecting another run configuration.
 
 ## Validate before live use
 
@@ -97,7 +97,7 @@ Then, in an operations-approved test, subscribe to just one PACMAN and print dia
 raw-display probe --geometry-dir layout --iog 1 --seconds 30
 ```
 
-The probe is intentionally verbose enough to distinguish a ZMQ problem from a decoder/filter problem. Each second it reports receive messages/s and MB/s, total/data words/s, all four ASIC packet-type rates, valid-parity data, upstream/downstream counts, mapped/unmapped hits, legacy/new-envelope counts, non-D messages and malformed-frame increments. Compare the normal DAQ/PacMon rates, host load and PACMAN/network load before, during and after the probe. Unexpected mapping or framing errors are a reason to stop and investigate, not to disable validation.
+The probe is intentionally verbose enough to distinguish a ZMQ problem from a decoder/filter problem. Each second it reports receive messages/s and MB/s, total/data words/s, all four packet-type rates, valid-parity data, upstream/downstream counts, mapped/unmapped hits, legacy-frame counts, non-D messages and malformed-frame increments. Compare the normal DAQ/PacMon rates, host load and PACMAN/network load before, during and after the probe. Unexpected mapping or framing errors are a reason to stop and investigate, not to disable validation.
 
 After that check, start one source in the browser:
 
@@ -113,18 +113,15 @@ raw-display serve --geometry-dir layout --host 127.0.0.1 --port 8765
 
 Use `--frame-hz 5` for fewer browser snapshots. A `deploy/raw-display.service.example` is included for later supervised deployment; it is not installed automatically. Keep one application instance: multiple independent instances create additional PACMAN subscribers.
 
-## Wire format: auto-detected envelope, configured ASIC family
+## Wire format: deliberately fixed to the current 2×2 stream
 
-The collector strictly recognizes two PACMAN envelopes without guessing:
+The live hot path is intentionally specialized to **legacy PACMAN framing (8-byte header + N × 16-byte words) carrying Packet_v2-compatible 8-byte LArPix payloads**. This is what the commissioned Run-3 stream showed. The active `RUN_CONFIG.json` is checked at startup to ensure the selected IO groups remain v2-compatible.
 
-- **legacy16:** 8-byte header + N × 16-byte words (the format used by PacMon's original parser);
-- **new24:** 24-byte v1.0 header + N × 24-byte words with 64-bit PACMAN timestamps, matching the newer PACMAN message implementation.
-
-Both carry an 8-byte LArPix payload. The ASIC payload family is **not inferred from the envelope**: it comes from `RUN_CONFIG.json`. Packet_v2 is used for ASIC versions 2/2b/2d and Packet_v3 for version 3/3a. NumPy performs bulk field extraction and parity checking.
+The display does not implement Packet_v3 or new24 PACMAN framing. If the detector is moved to those formats, startup/diagnostic behavior should be updated deliberately rather than silently autodetecting them in every message.
 
 A critical detail for the raw activity view is that the LArPix downstream marker is **diagnostic, not a rejection cut**. This now matches PacMon's ADC/rate path: any valid-parity data packet is eligible for geometry mapping whether marked upstream or downstream. Both direction rates remain visible in `probe`. Configuration/test packets, bad-parity packets, trigger/sync words and unknown words are counted but not painted.
 
-Structurally valid non-D PACMAN messages are counted rather than mislabeled as malformed. Truly unsupported frames are rejected with their length and first 32 bytes logged (rate-limited), making firmware-format mismatches diagnosable without a raw-data dump.
+Structurally valid legacy non-D PACMAN messages are counted rather than mislabeled as malformed. Unsupported frames are rejected with their length and first 32 bytes logged (rate-limited), making firmware-format changes diagnosable without a raw-data dump.
 
 ## Architecture and overload behavior
 
@@ -142,7 +139,7 @@ The collector only creates SUB sockets on data port 5556. It never creates a com
 
 **Read-only is not zero-cost:** another subscriber adds PACMAN/network work, even on the same receiving machine as PacMon. The actual dataserver/topology and available headroom still need commissioning. A SUB client alone does not prove that the production publisher is isolated from every possible overload.
 
-Receive HWM defaults to 128 **messages per source**, not 128 hits. Messages are length-limited; application state uses fixed-size arrays. There is no unbounded event queue or browser queue feeding back into collection. HWM bounds are not an exact total-memory or latency guarantee; kernel/publisher queues also exist.
+Receive HWM defaults to 4096 **messages per source**, not hits. The collector drains up to 256 messages from one PACMAN at a time and combines their word bodies before NumPy decoding. This is the main optimization for the observed ~5–10-word messages; it removes most per-message NumPy/Python setup overhead while retaining bounded fairness among PACMANs. Messages are length-limited; application state uses fixed-size arrays. There is no unbounded event queue or browser queue feeding back into collection. HWM bounds are not an exact total-memory or latency guarantee; kernel/publisher queues also exist.
 
 Each browser acknowledges one snapshot before the next is sent. A slow client receives a diff against its **own last delivered state**, so skipping intermediate snapshots does not permanently lose a pixel's latest activity. Unresponsive clients time out; geometry changes trigger a reload. The default is at most four browser connections. This is intentionally a lossy visualization: it coalesces repeated hits per pixel and does not preserve individual event history.
 
@@ -153,21 +150,20 @@ The UI distinguishes receiving/silent sources and stale/failed collector state. 
 ```bash
 raw-display benchmark --words 1024 --messages 10000
 raw-display benchmark --words 64 --messages 10000
-raw-display benchmark --words 8 --messages 50000   # close to the ~7–8 words/message seen in commissioning
+raw-display benchmark --words 8 --messages 50000 --batch-messages 256   # representative small messages
 # With the actual geometry files:
 raw-display benchmark --geometry-dir layout --words 1024 --messages 10000
 python -m pytest -q
 ```
 
-The benchmark replays synthetic wire messages through parity checking, decoding, geometry lookup and state updates. It does **not** include ZMQ transport, shared-memory publication, actual hardware bursts, browser rendering or VNC. Words/message matters: matching the real batch size is more informative than quoting only hits/s.
+The benchmark replays synthetic legacy/Packet_v2 messages through the **same batched decoder** used live, then parity checking, geometry lookup and state updates. It does **not** include ZMQ reception, shared-memory publication, actual hardware bursts, browser rendering or VNC. Use `--batch-messages` to study the batching tradeoff.
 
-Tests cover independent byte-layout examples, both PACMAN envelopes, Packet_v2/Packet_v3 extraction, parity/direction behavior, malformed frames, special words, Hydra route aliases, IO-group remapping, authoritative ASIC-version loading, loopback-only web binding, configuration rereading, snapshot catch-up, HTTP/WebSocket exchange, and an actual local ZMQ publisher/collector pair. See `VALIDATION.md` for the initial local checks and their limits.
+Tests cover independent byte-layout examples, batched Packet_v2 extraction, parity/direction behavior, malformed-frame isolation, special words, Hydra route aliases, IO-group remapping, v2-only run-configuration validation, loopback-only web binding, snapshot catch-up, HTTP/WebSocket exchange, and an actual local ZMQ publisher/collector pair. See `VALIDATION.md` for the initial local checks and their limits.
 
 ## Sources
 
 - PacMon geometry/mapping: https://github.com/BrunoGelli/2x2Pacmon/tree/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/layout
 - PacMon wire definitions: https://github.com/BrunoGelli/2x2Pacmon/tree/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/pkg
 - PacMon plot conventions: https://github.com/BrunoGelli/2x2Pacmon/blob/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/cmd/pacmon/plot.go
-- New 24-byte PACMAN protocol reference: `BrunoGelli/larpix-codex-workspace`, `larpix-control-messager/larpix/format/message.py`
 
 Upstream PacMon is Apache-2.0 licensed; see `NOTICE.md` for attribution. Its geometry files are downloaded separately, not silently regenerated here.
