@@ -10,13 +10,12 @@ import signal
 import time
 import numpy as np
 import zmq
-from .codec import (decode, DecodeError, MAX_MESSAGE, DECODE_COUNTERS,
-                    normalize_asic_version)
+from .codec import decode_batch, MAX_MESSAGE, DECODE_COUNTERS
 
 DEFAULT_IO = "/home/acd/acdaq/CRS_DAQ/daq0/crs_daq/io/pacman.json"
 DEFAULT_RUN_CONFIG = "/home/acd/acdaq/CRS_DAQ/daq0/crs_daq/RUN_CONFIG.json"
 FIELDS = (("messages", "bytes") + DECODE_COUNTERS +
-          ("mapped_hits", "unmapped_hits", "malformed", "last_rx", "last_trigger"))
+          ("mapped_hits", "unmapped_hits", "last_rx", "last_trigger"))
 COL = {key: n for n, key in enumerate(FIELDS)}
 
 
@@ -46,10 +45,10 @@ def read_endpoints(path=DEFAULT_IO, selected=None):
 
 
 def read_asic_versions(path=DEFAULT_RUN_CONFIG, selected=None):
-    """Read the active CRS ASIC-family map instead of guessing packet type.
+    """Verify selected IO groups use Packet_v2-compatible ASIC families.
 
-    LArPix 2, 2b and 2d share Packet_v2's payload layout. LArPix 3/3a use
-    Packet_v3. A missing/unknown entry is a startup error for live operation.
+    This display deliberately does not support Packet_v3. The check happens once
+    at startup; the hot decoder therefore has no per-message ASIC-family branch.
     """
     config = json.loads(Path(path).expanduser().read_text())
     raw = config.get("io_group_asic_version_")
@@ -57,10 +56,20 @@ def read_asic_versions(path=DEFAULT_RUN_CONFIG, selected=None):
         raise ValueError(f"{path}: missing io_group_asic_version_ mapping")
     wanted = sorted(selected if selected is not None else map(int, raw.keys()))
     result = {}
+    allowed = {"2", "2a", "2b", "2d", "lightpix-1"}
     for iog in wanted:
         if str(iog) not in raw:
             raise ValueError(f"{path}: missing ASIC version for IO group {iog}")
-        result[iog] = normalize_asic_version(raw[str(iog)])
+        label = str(raw[str(iog)]).strip().lower()
+        if label.startswith("v"):
+            label = label[1:]
+        if label not in allowed:
+            raise ValueError(
+                f"IO group {iog} uses ASIC family {raw[str(iog)]!r}; "
+                "raw-display intentionally supports only Packet_v2-compatible "
+                "2/2a/2b/2d families"
+            )
+        result[iog] = 2
     return result
 
 
@@ -85,32 +94,30 @@ def snapshot(shared):
                 shared.heartbeat.value)
 
 
-def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0, hwm=128,
-            asic_versions=None):
-    """One process owns all SUB sockets, the decoder, LUT and live state.
+def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0,
+            hwm=4096, batch_messages=256):
+    """One process owns all SUB sockets, vectorized decode, LUT and live state.
 
-    Fixed arrays + bounded ZMQ queues. No per-browser or unbounded hit queues.
-    An additional SUB still costs PACMAN CPU/network bandwidth: commission it.
+    The key throughput rule is that NumPy sees *batches* of many small PACMAN
+    messages. ZMQ reception remains message-oriented, but parsing/parity/field
+    extraction happen once per batch rather than once per message.
     """
     log = logging.getLogger("raw-display.collector")
-    # The parent owns graceful shutdown; do not let terminal Ctrl+C traceback the child.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
         if hasattr(os, "nice"):
             os.nice(5)
     except OSError:
         pass
+
     state = np.zeros(len(geometry.pixels), dtype=np.float64)
     stats = np.zeros((9, len(FIELDS)), dtype=np.float64)
     ctx, sockets = None, {}
     rng = np.random.default_rng(730)
     iogs = geometry.metadata["iogs"]
-    asic_versions = asic_versions or {iog: 2 for iog in iogs}
-    missing_versions = set(endpoints) - set(asic_versions)
-    if missing_versions:
-        raise ValueError(f"missing ASIC versions for IO groups {sorted(missing_versions)}")
     previous = time.monotonic()
     published, track_at, warned = 0.0, previous, {}
+
     try:
         if not demo:
             ctx, poller = zmq.Context(), zmq.Poller()
@@ -123,6 +130,7 @@ def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0, hwm=128
                 sock.connect(endpoint)
                 sockets[sock] = iog
                 poller.register(sock, zmq.POLLIN)
+
         while not shared.stop.is_set():
             now = time.monotonic()
             if demo:
@@ -138,7 +146,7 @@ def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0, hwm=128
                 for iog in iogs:
                     stats[iog, COL["last_rx"]] = now
                 if now - track_at > 1:
-                    tile = geometry.metadata["tiles"][int(rng.integers(len(geometry.metadata["tiles"]))) ]
+                    tile = geometry.metadata["tiles"][int(rng.integers(len(geometry.metadata["tiles"])))]
                     lo, hi = tile["start"], tile["start"] + tile["count"]
                     p = geometry.pixels[lo:hi]
                     line = np.abs(p["row"].astype(int) - p["col"].astype(int)) <= 1
@@ -150,38 +158,43 @@ def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0, hwm=128
                     if not event & zmq.POLLIN:
                         continue
                     iog = sockets[sock]
-                    # Fairness: a noisy source cannot monopolize the entire poller.
-                    for _ in range(8):
+                    frames = []
+                    total_bytes = 0
+
+                    # Bounded drain for fairness among PACMANs.
+                    for _ in range(batch_messages):
                         try:
-                            parts = sock.recv_multipart(flags=zmq.NOBLOCK)
+                            frame = sock.recv(flags=zmq.NOBLOCK)
                         except zmq.Again:
                             break
-                        now = time.monotonic()
-                        stats[iog, COL["messages"]] += 1
-                        stats[iog, COL["bytes"]] += sum(map(len, parts))
-                        stats[iog, COL["last_rx"]] = now
-                        try:
-                            if len(parts) != 1:
-                                raise DecodeError("multipart envelope is not supported; no frame guessing")
-                            raw = parts[0]
-                            hits = decode(raw, asic_versions[iog])
-                            for key, count in hits.counters.items():
-                                stats[iog, COL[key]] += count
-                            if hits.counters["triggers"]:
-                                stats[iog, COL["last_trigger"]] = now
-                            ids = geometry.lookup(iog, hits)
-                            valid = ids >= 0
-                            stats[iog, COL["mapped_hits"]] += np.count_nonzero(valid)
-                            stats[iog, COL["unmapped_hits"]] += np.count_nonzero(~valid)
-                            # Repeated IDs intentionally get one last-arrival timestamp.
-                            state[ids[valid]] = now
-                        except DecodeError as exc:
-                            stats[iog, COL["malformed"]] += 1
-                            if now - warned.get(iog, 0) > 5:
-                                sample = parts[0] if parts else b""
-                                log.warning("IOG %d: %s | len=%d prefix32=%s",
-                                            iog, exc, len(sample), sample[:32].hex())
-                                warned[iog] = now
+                        frames.append(frame)
+                        total_bytes += len(frame)
+
+                    if not frames:
+                        continue
+
+                    now = time.monotonic()
+                    stats[iog, COL["messages"]] += len(frames)
+                    stats[iog, COL["bytes"]] += total_bytes
+                    stats[iog, COL["last_rx"]] = now
+
+                    hits = decode_batch(frames)
+                    for key, count in hits.counters.items():
+                        stats[iog, COL[key]] += count
+
+                    if hits.diagnostic and now - warned.get(iog, 0) > 5:
+                        log.warning("IOG %d: %s", iog, hits.diagnostic)
+                        warned[iog] = now
+
+                    if hits.counters["triggers"]:
+                        stats[iog, COL["last_trigger"]] = now
+
+                    ids = geometry.lookup(iog, hits)
+                    valid = ids >= 0
+                    stats[iog, COL["mapped_hits"]] += np.count_nonzero(valid)
+                    stats[iog, COL["unmapped_hits"]] += np.count_nonzero(~valid)
+                    state[ids[valid]] = now
+
             now = time.monotonic()
             if now - published >= 0.1:
                 with shared.lock:
@@ -189,6 +202,7 @@ def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0, hwm=128
                     np.copyto(np.frombuffer(shared.metrics).reshape(stats.shape), stats)
                     shared.heartbeat.value = now
                 published = now
+
     except Exception:
         log.exception("collector exited; the web status must show failure")
         raise
@@ -212,6 +226,5 @@ def stop_collector(shared, proc):
     shared.stop.set()
     proc.join(3)
     if proc.is_alive():
-        # Only our child process; never a DAQ/PacMon process.
         proc.terminate()
         proc.join(2)
