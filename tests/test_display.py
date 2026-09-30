@@ -149,7 +149,7 @@ def test_config_is_authoritative(tmp_path):
 
 def test_run_config_controls_asic_family(tmp_path):
     p = tmp_path/"RUN_CONFIG.json"
-    p.write_text(json.dumps({"io_group_asic_version_":{"1":2,"5":"2b","7":"2d","8":3}}))
+    p.write_text(json.dumps({"io_group_asic_version_":{"1":2,"5":"2b","7":"v2d","8":"v3a"}}))
     assert read_asic_versions(p, [1,5,7,8]) == {1:2,5:2,7:2,8:3}
     with pytest.raises(ValueError):
         read_asic_versions(p, [2])
