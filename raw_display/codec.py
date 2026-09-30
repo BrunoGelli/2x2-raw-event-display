@@ -54,11 +54,13 @@ class Hits:
 def normalize_asic_version(value):
     """Map CRS config labels onto the two distinct 64-bit packet layouts."""
     s = str(value).strip().lower()
-    if s in {"2", "2b", "2d", "lightpix-1"}:
+    if s.startswith("v"):
+        s = s[1:]
+    if s in {"2", "2a", "2b", "2d", "lightpix-1"}:
         return 2
     if s in {"3", "3a"}:
         return 3
-    raise ValueError(f"unsupported ASIC version {value!r}; expected 2/2b/2d or 3/3a")
+    raise ValueError(f"unsupported ASIC version {value!r}; expected 2/2a/2b/2d or 3/3a")
 
 
 def odd_parity(payload):
