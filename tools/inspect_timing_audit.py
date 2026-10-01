@@ -4,6 +4,7 @@ import argparse
 import json
 import math
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -12,8 +13,24 @@ def fetch(origin):
     parts=urllib.parse.urlsplit(origin)
     if parts.scheme!='http' or parts.hostname!='127.0.0.1' or parts.username or parts.password or parts.path not in ('','/') or parts.query or parts.fragment:
         raise ValueError('--url must be a loopback origin such as http://127.0.0.1:8765')
-    with urllib.request.urlopen(origin.rstrip('/')+'/api/timing-audit',timeout=5) as response:
-        raw=response.read(512001)
+    try:
+        with urllib.request.urlopen(origin.rstrip('/')+'/api/timing-audit',timeout=5) as response:
+            raw=response.read(512001)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+        exc.close()
+        raise ValueError(
+            'HTTP 404: /api/timing-audit is not registered on the server at '+origin+'. '
+            'The trigger-audit ASIC server provides this route even when capture is disabled. '
+            'Check for an old running process, a different checkout/virtual environment, '
+            'explicit host-time mode, or the wrong port/tunnel. Installing or pushing code '
+            'does not restart the server. Stop only the existing event-display instance, '
+            'then launch --time-basis asic from the intended checkout using its absolute '
+            '.venv/bin/python -m raw_display path. Set RAW_DISPLAY_LATE_AUDIT_IOGS=6 '
+            '(or the intended group). Verify /api/geometry reports feature_build '
+            '"trigger-audit-1". Do not start an additional PACMAN subscriber.'
+        ) from exc
     if len(raw)>512000:raise ValueError('Diagnostic response exceeded its bound')
     data=json.loads(raw)
     if not data.get('session_id') or data.get('capture_age_s') is None or data['capture_age_s']>5:
