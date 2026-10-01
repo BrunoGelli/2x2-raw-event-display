@@ -26,6 +26,14 @@ def positive_int(value):
     return v
 
 
+def raw_tick_cut(value):
+    from .post_sync import validate_min_raw_timestamp
+    try:
+        return validate_min_raw_timestamp(int(value))
+    except (ValueError, TypeError) as exc:
+        raise argparse.ArgumentTypeError(str(exc))
+
+
 def loopback_host(value):
     if value != '127.0.0.1':
         raise argparse.ArgumentTypeError('raw-display may bind only to 127.0.0.1')
@@ -64,7 +72,7 @@ def benchmark(geometry, words=1024, messages=2000, batch_messages=256):
 
 def parser():
     p = argparse.ArgumentParser(description='2x2 read-only raw phosphor display')
-    p.add_argument('--version', action='version', version='raw-display 0.4.0')
+    p.add_argument('--version', action='version', version='raw-display 0.4.1')
     sub = p.add_subparsers(dest='command', required=True)
     for name in ('serve', 'probe', 'check'):
         s = sub.add_parser(name)
@@ -76,6 +84,8 @@ def parser():
             s.add_argument('--hwm', type=positive_int, default=4096)
             s.add_argument('--batch-messages', type=positive_int, default=256)
             s.add_argument('--time-basis', choices=('asic', 'host'), default='asic')
+            s.add_argument('--min-raw-timestamp', type=raw_tick_cut, default=10,
+                           help='display only: reject raw ASIC timestamps below this many ticks; 0 disables')
             s.add_argument('--playback-delay', type=float, default=1.25)
             s.add_argument('--tick-ns', type=float, default=100.)
             s.add_argument('--rollover-ticks', type=int, default=10_000_000)
@@ -136,7 +146,8 @@ def main():
             raise ValueError('invalid web settings; only 127.0.0.1 may be bound')
         shared, proc = start_collector(geo, endpoints, demo=demo,
             demo_rate=getattr(args, 'demo_rate', 330000), hwm=getattr(args, 'hwm', 4096),
-            batch_messages=getattr(args, 'batch_messages', 256))
+            batch_messages=getattr(args, 'batch_messages', 256),
+            min_raw_timestamp=getattr(args, 'min_raw_timestamp', 0))
         try:
             if args.command == 'probe':
                 start = last = time.monotonic()
@@ -159,7 +170,8 @@ def main():
             else:
                 import uvicorn
                 from .server import create_app
-                uvicorn.run(create_app(geo, shared, proc, demo, args.frame_hz, args.max_clients),
+                uvicorn.run(create_app(geo, shared, proc, demo, args.frame_hz, args.max_clients,
+                                       min_raw_timestamp=getattr(args, 'min_raw_timestamp', 0)),
                             host='127.0.0.1', port=args.port, workers=1, access_log=False,
                             ws_max_size=1024, ws_max_queue=1, ws_per_message_deflate=False)
         finally:

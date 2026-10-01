@@ -14,6 +14,7 @@ from .codec import decode_batch, MAX_MESSAGE
 from .runtime import make_shared, COL, FIELDS, stop_collector
 from .timing import TimingConfig, DetectorPlayback, TIMING_FIELDS
 from .rate_audit import make_rate_ring, RateAudit
+from .post_sync import display_mask
 
 
 def snapshot_timed(shared):
@@ -80,10 +81,16 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
                     warned[iog] = now
                 if hits.counters['triggers']:
                     stats[iog, COL['last_trigger']] = now
+                if hits.counters['sync83_packets']:
+                    stats[iog, COL['last_sync83']] = now
                 ids = geometry.lookup(iog, hits)
                 mapped = int(np.count_nonzero(ids >= 0))
                 stats[iog, COL['mapped_hits']] += mapped
                 stats[iog, COL['unmapped_hits']] += len(ids) - mapped
+                selected = display_mask(ids, hits.timestamp, config.min_raw_timestamp)
+                selected_count = int(np.count_nonzero(selected))
+                stats[iog, COL['post_sync_filtered_hits']] += mapped - selected_count
+                stats[iog, COL['display_selected_hits']] += selected_count
                 clocks[iog].ingest(ids, hits)
                 if audit is not None:
                     audit.record(iog, ids, len(frames), batch_messages,

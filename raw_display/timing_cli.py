@@ -18,7 +18,8 @@ def run(args):
             raise ValueError('raw-display may bind only to 127.0.0.1')
         config = TimingConfig(tick_seconds=args.tick_ns*1e-9,
                               rollover_ticks=args.rollover_ticks, sync_type=args.sync_type,
-                              playback_delay=args.playback_delay, max_pending_hits=args.max_pending_hits)
+                              playback_delay=args.playback_delay, max_pending_hits=args.max_pending_hits,
+                              min_raw_timestamp=args.min_raw_timestamp)
         if not 1 <= args.hwm <= 100000 or not 1 <= args.batch_messages <= 8192:
             raise ValueError('invalid HWM or batch-message limit')
         if args.command == 'serve' and not (1 <= args.port <= 65535 and
@@ -31,6 +32,7 @@ def run(args):
         print(f'ASIC-TIME / LEGACY16 / PACKET-V2: {len(geo.pixels):,} pixels, IOGs {list(endpoints)}', flush=True)
         print(f'PPS subtype={config.sync_type}, rollover={config.rollover_ticks}, '
               f'tick={args.tick_ns:g} ns, playback reserve={config.playback_delay:g} s. '
+              f'display cut: raw timestamp < {config.min_raw_timestamp} ticks. '
               'IOG-relative epochs; waiting for PPS, no arrival-time fallback.', flush=True)
         shared, proc = start_timed_collector(geo, endpoints, config, args.hwm, args.batch_messages)
         try:
@@ -57,7 +59,8 @@ def run(args):
                             state = 'PLAYING' if get('running') else ('BUFFERING' if get('synchronized') else 'WAITING_PPS')
                             print(f'IOG {iog}: mapped={rate:,.0f}/s {state}; '
                                   f'PPS={get("pps_syncs"):.0f}, boundary={get("boundary_corrected"):.0f}, '
-                                  f'late={get("late_hits"):.0f}, pending={get("pending_hits"):.0f}, '
+                                  f'late(pre/selected)={get("pre_cut_late_hits"):.0f}/{get("late_hits"):.0f}, '
+                                  f'cut={get("post_sync_filtered_hits"):.0f}, pending={get("pending_hits"):.0f}, '
                                   f'buffer_drop={get("buffer_dropped_hits"):.0f}, '
                                   f'bad_sync={get("invalid_syncs"):.0f}, invalid_time={get("invalid_times"):.0f}; '
                                   f'collector CPU={cpu*100:.1f}%', flush=True)

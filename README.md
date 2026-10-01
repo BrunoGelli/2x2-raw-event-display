@@ -1,9 +1,27 @@
-# 2×2 raw event display — v0.4.0
+# 2×2 raw event display — v0.4.1
 
 A read-only, batched PACMAN observer on **acd-daq03**, with Canvas rendering in
 ops01's browser and the existing approved forwarding/VNC workflow. Live serving
 now defaults to **unrolled ASIC-time playback**, not packet arrival time.
 This remains a 2D phosphor display, not a triggered event builder.
+
+## Post-SYNC noise cut and SYNC arrival indicators
+
+Live display selection now rejects **raw ASIC timestamps < 10 ticks**, retaining
+exactly tick 10. This applies to all selected IOGs in both ASIC and host playback.
+Use `--min-raw-timestamp 0` to disable the cut for a comparison. The decoder, PPS
+unroller, received/mapped counters and opt-in rate audit retain the unfiltered
+input; no recorded data or detector configuration is changed.
+
+Each IOG has a small **SYNC 83 RX** badge. It pulses on a new received SYNC word
+with subtype 83, never on heartbeat 72; it becomes amber after 2.5 seconds without
+one. This is collector-arrival status, not NTP/hardware lock or delayed playback.
+It remains live when the phosphor view is paused. Hover for age and count.
+
+`/api/status` exposes `sync83_packets`, `sync83_age_s`, `post_sync_filtered_hits`
+and, under `timing`, `pre_cut_late_hits`, `late_hits`, `timing_eligible_hits` and
+`display_selected_hits`. Pre-cut lateness is preserved so the noise cut cannot
+hide an existing timing issue. See [semantics and tests](docs/post_sync.md).
 
 ## Network boundary
 
@@ -97,8 +115,9 @@ Future hits wait in bounded arrays until their detector playback time. Late
 hits retain their real age, and an older packet cannot replace a pixel's newer
 timestamp. Repeated hits are reduced by timestamp maximum when presented.
 A common arrival batch therefore does not imply common full-brightness flashes.
-Genuinely simultaneous ASIC timestamps remain simultaneous; there is no noise
-filter, PPS veto, phase smearing or event-rate smoothing.
+Kept hits retain their ASIC timestamps with no phase smearing or rate smoothing.
+The explicit raw-timestamp display cut above removes the configured post-SYNC
+window; use `--min-raw-timestamp 0` to retain those hits as well.
 
 Host monotonic time only paces animation at 1× detector time. The playhead never
 jumps forward merely because a new packet batch arrived. An empty reserve freezes

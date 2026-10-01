@@ -4,6 +4,51 @@ const $ = id => document.getElementById(id);
 let meta, pixels, seen, pausedSeen, pauseTime=0, paused=false, socket;
 let lastFrameAt=0, status=null, oldStatus=null, oldStatusAt=0, retry=null;
 const planes=[], modules=new Map();
+// This indicator reports collector arrival, NOT delayed detector playback.
+// It is driven by observed subtype-83 counters, never by an artificial 1 Hz timer.
+let syncLinkUp=false, syncMetaAt=-Infinity;
+const sync83State=Array.from({length:9},()=>({count:null,age:null,at:0,pulseUntil:0}));
+function receiveSync83(packet,now=performance.now()){
+  if(packet.type!=='sync83'||packet.version!==1||!Array.isArray(packet.sources)||packet.sources.length>8)
+    throw new Error('Bad SYNC-83 metadata');
+  const ids=new Set();
+  for(const src of packet.sources){
+    if(!Number.isInteger(src.iog)||src.iog<1||src.iog>8||ids.has(src.iog)||
+       !Number.isSafeInteger(src.count)||src.count<0||
+       (src.age_s!==null&&(!Number.isFinite(src.age_s)||src.age_s<0)))
+      throw new Error('Bad SYNC-83 source');
+    ids.add(src.iog);
+  }
+  syncMetaAt=now;
+  for(const src of packet.sources){
+    const old=sync83State[src.iog];
+    const increment=old.count!==null&&src.count>old.count;
+    const fresh=src.age_s!==null&&src.age_s<0.6;
+    sync83State[src.iog]={count:src.count,age:src.age_s,at:now,
+      pulseUntil:increment&&fresh?now+250:(src.count===old.count?old.pulseUntil:0)};
+  }
+}
+function sync83View(iog,now=performance.now()){
+  const s=sync83State[iog];
+  if(!syncLinkUp||now-syncMetaAt>3500)return {kind:'unknown',label:'SYNC 83 —',age:null};
+  if(s.age===null||s.count===null||s.count===0)return {kind:'waiting',label:'SYNC 83 WAIT',age:null};
+  const age=s.age+Math.max(0,now-s.at)/1000;
+  if(age>2.5)return {kind:'stale',label:'SYNC 83 STALE',age};
+  return {kind:now<s.pulseUntil?'pulse':'live',label:'SYNC 83 RX',age};
+}
+function renderSync83(now){
+  for(const iog of meta.iogs){
+    const el=$(`sync83-${iog}`);if(!el)continue;
+    const v=sync83View(iog,now),name=`sync83-indicator ${v.kind}`;
+    if(el.className!==name)el.className=name;
+    const label=el.querySelector('.sync83-label');
+    if(label&&label.textContent!==v.label)label.textContent=v.label;
+    el.title=`IOG ${iog}: ${sync83State[iog].count??0} SYNC subtype-83 packets received. `+
+      (v.age===null?'No current arrival information.':`Last collector arrival ${v.age.toFixed(1)} s ago.`)+
+      ' Heartbeat 72 ignored. RX is not a hardware/NTP lock and precedes buffered charge playback.';
+  }
+}
+
 let pauseClocks=[];
 const clocks=Array.from({length:9},()=>({base:-1,frontier:-1,running:false,at:0}));
 const viewAudit={connections:0,closes:0,statusErrors:0,frames:0,maxFrameGapMs:0};
@@ -17,7 +62,9 @@ function displayTime(iog,now=performance.now()){
   return c.base*1000+advance;
 }
 window.rawDisplayDiagnostics=()=>({...viewAudit,timeBasis:meta?.time_basis||'host',
-  clocks:clocks.slice(1).map((c,i)=>({iog:i+1,...c})),collectorHealthy:status?.collector_healthy,paused});
+  clocks:clocks.slice(1).map((c,i)=>({iog:i+1,...c})),
+  sync83:sync83State.slice(1).map((s,i)=>({iog:i+1,...s,...sync83View(i+1)})),
+  collectorHealthy:status?.collector_healthy,paused});
 const fmt = n => n.toLocaleString(undefined,{maximumFractionDigits:1});
 const rateText = n => n >= 1000 ? `${(n/1000).toFixed(1)}k` : n.toFixed(0);
 const palette = new Uint8Array(256*3);
@@ -32,7 +79,7 @@ class Plane {
   constructor(iog, holder) {
     this.iog=iog; this.zoom=1; this.panX=0; this.panY=0;
     const box=document.createElement('div');box.className='plane';
-    box.innerHTML=`<h3>IOG ${iog}<span id="rate-${iog}">waiting</span></h3><canvas aria-label="IO group ${iog} raw activity"></canvas>`;
+    box.innerHTML=`<h3>IOG ${iog}<span id="rate-${iog}">waiting</span></h3><div class="sync83-row"><span id="sync83-${iog}" class="sync83-indicator waiting"><i aria-hidden="true"></i><span class="sync83-label">SYNC 83 WAIT</span></span></div><canvas aria-label="IO group ${iog} raw activity"></canvas>`;
     holder.appendChild(box);this.box=box;this.canvas=box.querySelector('canvas');
     this.ctx=this.canvas.getContext('2d',{alpha:false});
     this.tiles=meta.tiles.filter(t=>t.iog===iog).map(t=>{
@@ -107,10 +154,11 @@ class Plane {
 function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUint16(at+2,true),pixels.getUint8(at+4),pixels.getUint8(at+5)];}
 function connect(){
   const scheme=location.protocol==='https:'?'wss:':'ws:';
-  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}`);socket.binaryType='arraybuffer';
-  socket.onopen=()=>{viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
+  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1`);socket.binaryType='arraybuffer';
+  socket.onopen=()=>{syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
   socket.onmessage=event=>{
     try{
+      if(typeof event.data==='string'){receiveSync83(JSON.parse(event.data));return;}
       const d=new DataView(event.data);
       const now=performance.now();
       if(d.byteLength<12)throw new Error('Short display frame');
@@ -141,7 +189,7 @@ function connect(){
       lastFrameAt=now;socket.send(String(seq));
     }catch(err){$('notice').textContent=err.message;socket.close();}
   };
-  socket.onclose=e=>{viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
+  socket.onclose=e=>{syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
   socket.onerror=()=>socket.close();
 }
 async function updateStatus(){
@@ -167,6 +215,11 @@ async function updateStatus(){
       if(wait.length)notice+=` WAITING FOR PPS: IOG ${wait.join(', ')}.`;
       if(buffering.length)notice+=` BUFFERING/PAUSED: IOG ${buffering.join(', ')}.`;
       if(dropped||invalid)notice+=` TIMING WARNING: ${fmt(dropped)} buffer drops; ${fmt(invalid)} invalid timings/SYNCs.`;
+    }
+    if(meta.mode!=='DEMO'){
+      const cut=meta.timing_config?.min_raw_timestamp??meta.min_raw_timestamp??0;
+      const excluded=status.sources.reduce((n,s)=>n+(s.post_sync_filtered_hits||0),0);
+      notice+=cut>0?` Display cut: raw ASIC timestamp < ${cut} ticks (${fmt(excluded)} mapped hits excluded).`:' Post-SYNC display cut OFF.';
     }
     if(!status.collector_healthy)notice+='  COLLECTOR NOT HEALTHY — activity may be stale.';
     if(malformed>0)notice+='  Check wire format: malformed messages were rejected.';
@@ -198,6 +251,7 @@ async function main(){
   function render(now){
     requestAnimationFrame(render);
     if(now-lastDraw<1000/Number($('targetFps').value)-1)return;
+    renderSync83(now);
     lastDraw=now;const tau=Number($('decay').value);
     if(tau!==lastTau){brightness=new Uint8Array(Math.ceil(tau*1000*8/16)+1);for(let i=0;i<brightness.length-1;i++)brightness[i]=Math.round(255*Math.exp(-i*16/(tau*1000)));lastTau=tau;}
     const fresh=lastFrameAt>0&&now-lastFrameAt<3500&&status?.collector_healthy;

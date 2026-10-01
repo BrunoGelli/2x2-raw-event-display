@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ndlar-raw-display"
-version = "0.4.0"
+version = "0.4.1"
 description = "Read-only PACMAN observer and browser-based 2D phosphor display for ND-LAr 2x2"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.23,<3", "pyzmq>=25,<28", "fastapi>=0.100,<1", "uvicorn>=0.23,<1", "websockets>=11,<16"]

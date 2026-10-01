@@ -17,7 +17,7 @@ DECODE_COUNTERS = (
     'words', 'data_words', 'data_hits', 'valid_data_hits', 'bad_parity',
     'downstream', 'upstream', 'other_packets', 'packet_type_0', 'packet_type_1',
     'packet_type_2', 'packet_type_3', 'triggers', 'sync', 'unknown_words',
-    'nondata_messages', 'legacy_messages', 'malformed',
+    'nondata_messages', 'legacy_messages', 'malformed', 'sync83_packets',
 )
 
 class DecodeError(ValueError):
@@ -95,6 +95,7 @@ def decode_batch(messages, *, strict=False):
     kinds = words['kind']
     counters['triggers'] = int(np.count_nonzero(kinds == ord('T')))
     counters['sync'] = int(np.count_nonzero(kinds == ord('S')))
+    counters['sync83_packets'] = int(np.count_nonzero((kinds == ord('S')) & (words['io'] == 83)))
     counters['unknown_words'] = int(np.count_nonzero(~np.isin(kinds, [ord(x) for x in 'DTSPWRE'])))
     indices = np.flatnonzero(kinds == ord('D'))
     data = words[indices]

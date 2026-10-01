@@ -5,6 +5,7 @@ from pathlib import Path
 import struct
 import time
 import numpy as np
+from .post_sync import sync83_message
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +23,7 @@ def encode_frame(previous, current, now, sequence):
     return FRAME_HEADER.pack(b"RDP1", sequence, len(ids), now) + records.tobytes()
 
 
-def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4):
+def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4, min_raw_timestamp=10):
     static = Path(__file__).with_name("static")
     hub = {"seen": np.zeros(len(geometry.pixels)), "stats": np.zeros((9, len(FIELDS))),
            "heartbeat": 0.0, "sequence": 0, "clients": 0}
@@ -57,7 +58,8 @@ def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4)
     @app.get("/api/geometry")
     def geometry_meta():
         return {**geometry.metadata, "mode": "DEMO" if demo else "LIVE",
-                "wire_format": "legacy16 / Packet_v2 / batched", "frame_hz": frame_hz}
+                "wire_format": "legacy16 / Packet_v2 / batched", "frame_hz": frame_hz,
+                "min_raw_timestamp": 0 if demo else min_raw_timestamp}
 
     @app.get("/api/geometry.bin")
     def geometry_binary():
@@ -71,7 +73,7 @@ def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4)
             row = hub["stats"][iog]
             data = {key: int(row[COL[key]]) for key in FIELDS if not key.startswith("last_")}
             data["iog"] = iog
-            for name in ("rx", "trigger"):
+            for name in ("rx", "trigger", "sync83"):
                 value = row[COL["last_" + name]]
                 data[name + "_age_s"] = max(0, now - value) if value else None
             sources.append(data)
@@ -80,7 +82,8 @@ def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4)
         return dict(mode="DEMO" if demo else "LIVE", collector_alive=proc.is_alive(),
                     collector_healthy=healthy, collector_age_s=age, sources=sources,
                     clients=hub["clients"], transport_loss="not measurable from this stream",
-                    time_basis="host arrival; not synchronized detector time")
+                    time_basis="host arrival; not synchronized detector time",
+                    min_raw_timestamp=0 if demo else min_raw_timestamp)
 
     @app.get("/healthz")
     def health():
@@ -109,6 +112,9 @@ def create_app(geometry, shared, proc, demo=False, frame_hz=10.0, max_clients=4)
                     continue
                 current, sequence = hub["seen"], hub["sequence"]
                 frame = encode_frame(previous, current, time.monotonic(), sequence)
+                if ws.query_params.get('sync83') == '1':
+                    await asyncio.wait_for(ws.send_json(sync83_message(
+                        hub['stats'], geometry.metadata['iogs'], time.monotonic(), COL)), timeout=3)
                 await asyncio.wait_for(ws.send_bytes(frame), timeout=3)
                 # One frame in flight. Slow/tab-hidden clients skip intermediate snapshots.
                 # Diff against their own last delivered state, not global deltas.

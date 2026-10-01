@@ -6,6 +6,7 @@ from pathlib import Path
 import struct
 import time
 import numpy as np
+from .post_sync import sync83_message
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -85,7 +86,7 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
             row = hub['stats'][iog]
             values = {key: int(row[COL[key]]) for key in FIELDS if not key.startswith('last_')}
             values['iog'] = iog
-            for key in ('rx', 'trigger'):
+            for key in ('rx', 'trigger', 'sync83'):
                 stamp = row[COL['last_'+key]]
                 values[key+'_age_s'] = max(0., now-stamp) if stamp else None
             ts = {key: float(hub['timing'][iog, j]) for j, key in enumerate(TIMING_FIELDS)}
@@ -97,7 +98,8 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
                     collector_alive=proc.is_alive(),
                     collector_healthy=bool(proc.is_alive() and age is not None and age < 3),
                     collector_age_s=age, collector_cpu_fraction=float(hub['cpu']), sources=sources,
-                    clients=hub['clients'], transport_loss='not measurable from this stream')
+                    clients=hub['clients'], transport_loss='not measurable from this stream',
+                    min_raw_timestamp=config.min_raw_timestamp)
 
     @app.get('/api/tile-rates')
     def tile_rates(after: int = 0, limit: int = 100):
@@ -135,6 +137,9 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
                     continue
                 current = hub['seen']
                 frame = encode_timed_frame(previous, current, hub['timing'], sequence)
+                if ws.query_params.get('sync83') == '1':
+                    await asyncio.wait_for(ws.send_json(sync83_message(
+                        hub['stats'], geometry.metadata['iogs'], time.monotonic(), COL)), timeout=3)
                 await asyncio.wait_for(ws.send_bytes(frame), timeout=3)
                 ack = await asyncio.wait_for(ws.receive_text(), timeout=3)
                 if ack != str(sequence):

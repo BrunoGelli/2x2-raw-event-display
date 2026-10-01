@@ -11,11 +11,13 @@ import time
 import numpy as np
 import zmq
 from .codec import decode_batch, MAX_MESSAGE, DECODE_COUNTERS
+from .post_sync import display_mask, validate_min_raw_timestamp
 
 DEFAULT_IO = "/home/acd/acdaq/CRS_DAQ/daq0/crs_daq/io/pacman.json"
 DEFAULT_RUN_CONFIG = "/home/acd/acdaq/CRS_DAQ/daq0/crs_daq/RUN_CONFIG.json"
 FIELDS = (("messages", "bytes") + DECODE_COUNTERS +
-          ("mapped_hits", "unmapped_hits", "last_rx", "last_trigger"))
+          ("mapped_hits", "unmapped_hits", "last_rx", "last_trigger",
+           "last_sync83", "post_sync_filtered_hits", "display_selected_hits"))
 COL = {key: n for n, key in enumerate(FIELDS)}
 
 
@@ -95,13 +97,14 @@ def snapshot(shared):
 
 
 def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0,
-            hwm=4096, batch_messages=256):
+            hwm=4096, batch_messages=256, min_raw_timestamp=10):
     """One process owns all SUB sockets, vectorized decode, LUT and live state.
 
     The key throughput rule is that NumPy sees *batches* of many small PACMAN
     messages. ZMQ reception remains message-oriented, but parsing/parity/field
     extraction happen once per batch rather than once per message.
     """
+    min_raw_timestamp = validate_min_raw_timestamp(min_raw_timestamp)
     log = logging.getLogger("raw-display.collector")
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
@@ -188,12 +191,17 @@ def collect(geometry, endpoints, shared, demo=False, demo_rate=330000.0,
 
                     if hits.counters["triggers"]:
                         stats[iog, COL["last_trigger"]] = now
+                    if hits.counters["sync83_packets"]:
+                        stats[iog, COL["last_sync83"]] = now
 
                     ids = geometry.lookup(iog, hits)
                     valid = ids >= 0
                     stats[iog, COL["mapped_hits"]] += np.count_nonzero(valid)
                     stats[iog, COL["unmapped_hits"]] += np.count_nonzero(~valid)
-                    state[ids[valid]] = now
+                    selected = display_mask(ids, hits.timestamp, min_raw_timestamp)
+                    stats[iog, COL["post_sync_filtered_hits"]] += np.count_nonzero(valid & ~selected)
+                    stats[iog, COL["display_selected_hits"]] += np.count_nonzero(selected)
+                    state[ids[selected]] = now
 
             now = time.monotonic()
             if now - published >= 0.1:

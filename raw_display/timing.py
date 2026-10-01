@@ -9,6 +9,7 @@ cross-IOG/trigger alignment calibration.
 from dataclasses import dataclass
 import heapq
 import numpy as np
+from .post_sync import display_mask, validate_min_raw_timestamp
 
 
 @dataclass(frozen=True)
@@ -19,8 +20,10 @@ class TimingConfig:
     playback_delay: float = 1.25
     max_pending_hits: int = 500_000 # per IOG, bounded even if UI/clock stalls
     max_pending_chunks: int = 8192
+    min_raw_timestamp: int = 10   # raw ASIC ticks 0..9 are display-vetoed; 0 disables
 
     def __post_init__(self):
+        validate_min_raw_timestamp(self.min_raw_timestamp)
         if not np.isfinite(self.tick_seconds) or self.tick_seconds <= 0:
             raise ValueError('tick_seconds must be finite and positive')
         if not 1 <= self.rollover_ticks <= 2**31:
@@ -130,7 +133,9 @@ class DetectorPlayback:
         self.serial = 0
         self.pending_hits = 0
         self.stats = dict(late_hits=0, buffer_dropped_hits=0, underruns=0,
-                          pacing_stalls=0, peak_pending_hits=0)
+                          pacing_stalls=0, peak_pending_hits=0,
+                          pre_cut_late_hits=0, timing_eligible_hits=0,
+                          post_sync_filtered_hits=0, display_selected_hits=0)
 
     @property
     def frontier(self):
@@ -142,7 +147,16 @@ class DetectorPlayback:
         if len(ids) != len(ticks):
             raise ValueError('geometry IDs and timing must have identical order')
         valid &= np.asarray(ids) >= 0
-        self.enqueue(np.asarray(ids)[valid], ticks[valid])
+        # Unroll ALL accepted hits first. A display veto must not change PPS state,
+        # receipt frontier, boundary corrections, or the unfiltered late diagnostic.
+        self.stats['timing_eligible_hits'] += int(np.count_nonzero(valid))
+        if self.cursor is not None:
+            limit = int(np.floor(self.cursor / self.config.tick_seconds))
+            self.stats['pre_cut_late_hits'] += int(np.count_nonzero(valid & (ticks <= limit)))
+        selected = valid & display_mask(ids, hits.timestamp, self.config.min_raw_timestamp)
+        self.stats['post_sync_filtered_hits'] += int(np.count_nonzero(valid & ~selected))
+        self.stats['display_selected_hits'] += int(np.count_nonzero(selected))
+        self.enqueue(np.asarray(ids)[selected], ticks[selected])
 
     def enqueue(self, ids, ticks):
         """Queue already validated detector ticks; no unbounded waiting/queueing."""
