@@ -9,7 +9,7 @@
 <nav><label>Persistence <input id="decay" type="range" min="0.05" max="3" value="0.65" step="0.05"><output id="decayLabel">0.65 s</output></label><label>View <select id="module"><option value="all">All modules</option></select></label><label>Render <select id="targetFps"><option>15</option><option selected>30</option><option>60</option></select> fps</label><button id="pause">Pause view</button><button id="reset">Reset zoom</button><button id="full">Fullscreen</button></nav>
 <div id="notice" role="status">Loading geometry and waiting for the collector.</div>
 <main id="modules" class="modules"></main>
-<footer><div><span class="dot"></span> Brightness shows time since last host-arrival hit, not charge. Scroll to zoom · drag to pan · hover for pixel identity.</div><div>Read-only observer · transport loss is not measurable from this stream · no trigger-based reconstruction yet.</div><div id="errors">No status yet.</div></footer>
+<footer><div><span class="dot"></span> Brightness shows hit age on the selected playback clock, not charge. Scroll to zoom · drag to pan · hover for pixel identity.</div><div>Read-only observer · transport loss is not measurable from this stream · no trigger-based reconstruction yet.</div><div id="errors">No status yet.</div></footer>
 <div id="tooltip" hidden></div>
 <script src="/static/display.js"></script>
 </body></html>

@@ -1,12 +1,20 @@
-# 2×2 raw event display
+# 2×2 raw event display — v0.4.0
 
-A read-only PACMAN observer and a browser-based **2D phosphor display**. The collector and website run on **acd-daq03**, separately from PacMon and the production DAQ. A browser on **ops01** draws the display; shifters can use their existing VNC connection.
+A read-only, batched PACMAN observer on **acd-daq03**, with Canvas rendering in
+ops01's browser and the existing approved forwarding/VNC workflow. Live serving
+now defaults to **unrolled ASIC-time playback**, not packet arrival time.
+This remains a 2D phosphor display, not a triggered event builder.
 
-This first version is deliberately **not** an event builder. It shows physical pixels fading after their most recent **host-arrival** hit. It does not infer drift coordinates, align PACMAN clocks, calibrate charge, or associate charge with light/beam triggers. Trigger and sync words are counted, not reconstructed.
+## Network boundary
 
-## Install on daq03
+The web CLI accepts **only `127.0.0.1`**. Keep the existing approved tunnel to
+that loopback endpoint. The project never opens a public/subnet-facing web
+listener. ops01 needs only its browser; all assets are served locally, without
+a CDN. Nothing here installs or changes PACMAN, PacMon, or production DAQ services.
 
-Use a separate environment, not the running CRS/PacMon environment. Python 3.9+ is required; Python 3.11+ is preferable when already available.
+## Install / update
+
+Use a separate virtual environment, Python 3.9 or newer:
 
 ```bash
 git clone https://github.com/BrunoGelli/2x2-raw-event-display.git
@@ -15,155 +23,187 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[test]'
 python -m pytest -q
+raw-display --version
 ```
 
-Only NumPy, PyZMQ, FastAPI, Uvicorn, and the WebSocket transport are runtime dependencies. There is no Go, Node, npm, Plotly, LArPix-control, database, or external CDN dependency.
+For an existing clean checkout, use `git pull --ff-only`, then the install/test
+commands above. The earlier optional rate-audit files are now included in main.
+If that patch is still applied locally, save it before pulling rather than
+forcing an overwrite:
 
-**ops01 needs only a modern browser.** HTML, CSS, JavaScript, geometry, and display updates are served by daq03. Nothing is installed on ops01 by this project.
+```bash
+git status --short
+git stash push -u -m "before-asic-time-update" -- raw_display tools tests docs README.md pyproject.toml
+git pull --ff-only
+```
 
-## First: a no-hardware demo
+Keep that stash as a backup; do **not** automatically pop it or reapply the old
+patch over this release. The detector-time collector already integrates the
+host-time rate audit. Data files outside these source paths are not stashed.
+
+## Start the display
+
+```bash
+raw-display check --geometry-dir layout
+raw-display probe --geometry-dir layout --iog 1 --seconds 10
+raw-display serve --geometry-dir layout --host 127.0.0.1 --port 8765
+```
+
+`serve` and `probe` default to `--time-basis asic`. The normal transport settings
+remain **HWM 4096 messages/source, bounded drain 256 messages/source, SUB on 5556**.
+There are no extra PACMAN subscribers for timing, rate capture, or web clients.
+The additional timestamp/buffer computation is not zero-cost; validate CPU and
+normal acquisition behavior on daq03 as usual.
+
+At startup, each IOG waits for a valid PPS SYNC and then builds a detector-time
+reserve. `WAITING FOR PPS` or `BUFFERING` is intentional, not silent packet loss.
+There is no automatic fallback to host timestamps. Source packet rates include
+received/mapped hits even while playback is warming up.
+
+Timing settings, shown explicitly here with their defaults:
+
+```bash
+raw-display serve --geometry-dir layout --host 127.0.0.1 --port 8765 \
+  --time-basis asic --tick-ns 100 --rollover-ticks 10000000 \
+  --sync-type 83 --playback-delay 1.25 --max-pending-hits 500000
+```
+
+The default subtype 83 is ASCII `S`, matching Flow's selected SYNC subtype;
+heartbeat subtype 72 (`H`) does not increment the PPS epoch. Confirm the tick,
+reset period and subtype against the deployed stream; they are not autodetected.
+The 1.25-second setting is a **minimum initial/rebuffer reserve**, not a promise
+of exact end-to-end latency. Increase it explicitly if late deliveries/underruns
+show that the reserve is insufficient. Do not tune it to hide real charge bursts.
+
+Use `--time-basis host` explicitly to compare with the previous arrival-time
+view. The no-hardware demo remains a clearly labeled synthetic host-time view:
 
 ```bash
 raw-display demo --host 127.0.0.1 --port 8765
 ```
 
-The page is prominently marked **DEMO** and uses synthetic geometry and approximately 330,000 synthetic hits/s. No PACMAN sockets or CRS files are accessed in demo mode. Ctrl+C stops our server and collector.
+Reload the browser after upgrading: ASIC mode uses the new `RDP2` binary frame
+format carrying detector-time hit timestamps and per-IOG playback clocks.
 
-**Network safety is enforced in code:** this application may bind only to `127.0.0.1`. Supplying any bind address other than `127.0.0.1` is rejected before Uvicorn starts. Access from ops01/shifter workflows must therefore use the already-approved local forwarding/tunneling path to daq03 loopback; this project never opens a public- or subnet-facing listening socket.
+## What ASIC-time playback does
 
-The browser offers persistence control, module selection, zoom/pan, pixel hover, local pause/resume, fullscreen, and a 15/30/60 FPS target. The default is 30 FPS to reduce VNC/CPU load; this is a target, not a performance guarantee. Backend snapshots default to 10 Hz. Pause affects the view, not ingestion.
+The decoder retains SYNC words and accepted-hit positions in original wire
+order. A stateful unroller per IO group follows the rollover arithmetic in
+Flow's `RawEventBuilder.unroll_timestamps()`, retaining the preceding SYNC across
+receive batches. Receipt timestamps help correct data that crossed a reset
+while traversing the tile; they are **not** substituted for ASIC hit timestamps.
 
-## Use PacMon geometry, not a new detector map
+Future hits wait in bounded arrays until their detector playback time. Late
+hits retain their real age, and an older packet cannot replace a pixel's newer
+timestamp. Repeated hits are reduced by timestamp maximum when presented.
+A common arrival batch therefore does not imply common full-brightness flashes.
+Genuinely simultaneous ASIC timestamps remain simultaneous; there is no noise
+filter, PPS veto, phase smearing or event-rate smoothing.
 
-The loader reads these existing PacMon JSON files directly:
+Host monotonic time only paces animation at 1× detector time. The playhead never
+jumps forward merely because a new packet batch arrived. An empty reserve freezes
+playback and visibly re-buffers. Long collector pauses are not compressed into
+one fresh flash. The pending buffer is bounded per IOG in both hits and chunks;
+overflow discards display work with visible counters, never waits on a browser.
 
-```
-geometry_mod0_v4.json
-geometry_mod1_v4.json
-geometry_mod2_v4.json
-geometry_mod3_v4.json
-```
+**Epochs are relative per IOG.** Unrolling is not an absolute cross-IOG calibration.
+The first observed PPS can be a different cycle on different connections.
+Do not use this display as proof of microsecond cross-IOG coincidence or trigger
+association. That calibration remains for the separate 3D/event-building work.
+Missing/duplicated/reordered SYNC messages can compromise epoch continuity;
+received counters cannot certify lossless transport. See [timing details](docs/asic_time.md).
 
-Point `--geometry-dir` at an existing PacMon `layout` directory. Alternatively, fetch a verified snapshot once:
+## Existing configuration and geometry remain authoritative
 
-```bash
-raw-display fetch-geometry --geometry-dir layout
-```
-
-The downloader pins `BrunoGelli/2x2Pacmon` main at commit `2cf0e2c7db056dd205efb7f41616c1795fa9ea67` and verifies the Git blob hash of every downloaded JSON. Downloads are explicit: **the live application never fetches anything from GitHub**. Existing nonmatching files are not overwritten. Custom local PacMon files remain supported through `--geometry-dir`; their SHA256 fingerprints are reported by `check`.
-
-The mapping reproduces PacMon's `cmd/pacmon/plot.go`:
-
-```python
-module = (io_group - 1) // 2
-geometry_io_group = 2 - (io_group % 2)
-local_tile = (io_channel - 1) // 4 + 1
-geometry_tile = local_tile + 8 * (1 - (io_group % 2))
-```
-
-For example, IOG 6 / local tile 5 uses module 2's geometry IO group 2 / tile 13. All four IO channels belonging to a tile map to the same physical pixels, so rerouting a Hydra within that tile does not require rebuilding a route-specific geometry map. The imported coordinates retain the tile swaps and orientations in PacMon's files. Positive geometry Y is displayed upward. Canvas rasters are built per tile, so physical gaps between tiles are retained.
-
-Unknown addresses are counted and excluded, never plotted at a guessed origin. Invalid grids, missing tiles and overlapping geometry entries fail startup. The pixel total is the number in the geometry, **not** a count of enabled/live channels.
-
-## The PACMAN address file remains authoritative
-
-Every live/probe startup reads:
+PACMAN endpoints are read at startup from:
 
 ```
 /home/acd/acdaq/CRS_DAQ/daq0/crs_daq/io/pacman.json
 ```
 
-No duplicate PACMAN address list is stored in this repository. The expected structure is the existing `PACMAN_IO` JSON with `io_group: [[integer, hostname_or_IP], ...]`. The file is read only; address changes take effect on restart. Use `--pacman-config` to explicitly select another file. This 2×2 implementation accepts IO groups 1–8 and IPv4 addresses/hostnames without ports.
-
-Live/probe/check also read the ASIC-family map from the active CRS run configuration:
+There is no duplicate IP list. `--pacman-config` deliberately overrides this path.
+Packet-family compatibility is checked once using `io_group_asic_version_` in:
 
 ```
 /home/acd/acdaq/CRS_DAQ/daq0/crs_daq/RUN_CONFIG.json
 ```
 
-Specifically, `io_group_asic_version_` is checked once at startup. This display intentionally supports only Packet_v2-compatible families (`2`, `2a`, `2b`, `2d`). A v3-family selection fails startup instead of adding a branch to the live hot path. Use `--run-config` only when intentionally selecting another run configuration.
+`--run-config` overrides that path. This display supports Packet_v2-compatible
+2/2a/2b/2d families and legacy PACMAN 8-byte headers with 16-byte words. It does
+not add v3 or new24 support. Valid-parity data in both upstream/downstream
+marker states are accepted, as in PacMon. Configuration/invalid-parity packets
+are not painted; triggers and SYNCs are not charge hits.
 
-## Validate before live use
-
-Check geometry/configuration without opening **any** sockets:
-
-```bash
-raw-display check --geometry-dir layout
-```
-
-Then, in an operations-approved test, subscribe to just one PACMAN and print diagnostics without running a web server:
+Use the existing PacMon `layout` directory, or explicitly fetch pinned geometry:
 
 ```bash
-raw-display probe --geometry-dir layout --iog 1 --seconds 30
+raw-display fetch-geometry --geometry-dir layout
 ```
 
-The probe is intentionally verbose enough to distinguish a ZMQ problem from a decoder/filter problem. Each second it reports receive messages/s and MB/s, total/data words/s, all four packet-type rates, valid-parity data, upstream/downstream counts, mapped/unmapped hits, legacy-frame counts, non-D messages and malformed-frame increments. Compare the normal DAQ/PacMon rates, host load and PACMAN/network load before, during and after the probe. Unexpected mapping or framing errors are a reason to stop and investigate, not to disable validation.
+The four `geometry_mod{0,1,2,3}_v4.json` files retain PacMon tile swaps/orientations.
+The downloader verifies blobs pinned to PacMon commit
+`2cf0e2c7db056dd205efb7f41616c1795fa9ea67`; it never runs during live acquisition.
+The mapping is unchanged:
 
-After that check, start one source in the browser:
+```python
+module = (io_group - 1) // 2
+geometry_io_group = 2 - io_group % 2
+local_tile = (io_channel - 1) // 4 + 1
+geometry_tile = local_tile + 8 * (1 - io_group % 2)
+```
+
+The four Hydra channels of a tile share physical pixel IDs. Unknown mappings are
+counted, not assigned a guessed coordinate. Geometry pixel totals are not enabled
+channel counts.
+
+## Diagnostics and overhead
+
+`/api/status` reports per-IOG PPS, warmup, boundary corrections, invalid timing,
+late hits, pending-buffer drops and playback state, plus collector CPU fraction.
+In the browser console, `rawDisplayDiagnostics()` reports clocks and connection
+health. The buffer frontier comes from detector/SYNC/receipt timing; the browser
+never supplies detector timestamps.
+
+The host-time rate audit is retained as an **independent control**, not relabeled
+as an ASIC-time measurement. Enable it on the existing ASIC serving instance:
 
 ```bash
-raw-display serve --geometry-dir layout --iog 1 --host 127.0.0.1 --port 8765
+RAW_DISPLAY_RATE_AUDIT=1 raw-display serve --geometry-dir layout --host 127.0.0.1 --port 8765
+python tools/tile_rate_audit.py capture --url http://127.0.0.1:8765 --seconds 60 --out rates.jsonl
+# Plot offline; Matplotlib is needed only for plotting:
+python tools/tile_rate_audit.py plot rates.jsonl --outdir rate-plots
 ```
 
-Remove `--iog 1` to use all IO groups from the authoritative file:
+Do not run a second serving instance just to capture rates. An audit-reader
+cannot hold up the diagnostic writer; skipped audit rows are explicitly reported.
+
+The old `raw-display benchmark` measures decoding/mapping, not ASIC playback.
+Use the new same-input comparison for the timing overhead:
 
 ```bash
-raw-display serve --geometry-dir layout --host 127.0.0.1 --port 8765
+python tools/benchmark_timing.py --words 8 --batch-messages 256 --rate 622000
+python tools/benchmark_timing.py --words 8 --batch-messages 32 --rate 622000
 ```
 
-Use `--frame-hz 5` for fewer browser snapshots. A `deploy/raw-display.service.example` is included for later supervised deployment; it is not installed automatically. Keep one application instance: multiple independent instances create additional PACMAN subscribers.
+These are synthetic offline benchmarks, not NIC, HTTP, browser/VNC or production
+DAQ tests. Actual drain sizes can be lower than the configured maximum.
 
-## Wire format: deliberately fixed to the current 2×2 stream
+## Recorded-file validation
 
-The live hot path is intentionally specialized to **legacy PACMAN framing (8-byte header + N × 16-byte words) carrying Packet_v2-compatible 8-byte LArPix payloads**. This is what the commissioned Run-3 stream showed. The active `RUN_CONFIG.json` is checked at startup to ensure the selected IO groups remain v2-compatible.
-
-The display does not implement Packet_v3 or new24 PACMAN framing. If the detector is moved to those formats, startup/diagnostic behavior should be updated deliberately rather than silently autodetecting them in every message.
-
-A critical detail for the raw activity view is that the LArPix downstream marker is **diagnostic, not a rejection cut**. This now matches PacMon's ADC/rate path: any valid-parity data packet is eligible for geometry mapping whether marked upstream or downstream. Both direction rates remain visible in `probe`. Configuration/test packets, bad-parity packets, trigger/sync words and unknown words are counted but not painted.
-
-Structurally valid legacy non-D PACMAN messages are counted rather than mislabeled as malformed. Unsupported frames are rejected with their length and first 32 bytes logged (rate-limited), making firmware-format changes diagnosable without a raw-data dump.
-
-## Architecture and overload behavior
-
-```
-PACMAN data PUB sockets (:5556)
-        -> Python collector process on daq03
-           -> vectorized decode + geometry LUT + last-arrival state
-           -> fixed-size shared-memory snapshots
-              -> FastAPI on daq03 (HTTP + WebSocket)
-                 -> Canvas in ops01's browser
-                    -> existing VNC to shifters
-```
-
-The collector only creates SUB sockets on data port 5556. It never creates a command/control socket, writes registers, resets a PACMAN, modifies configs, or changes PacMon/DAQ services. It requests lower CPU priority where supported.
-
-**Read-only is not zero-cost:** another subscriber adds PACMAN/network work, even on the same receiving machine as PacMon. The actual dataserver/topology and available headroom still need commissioning. A SUB client alone does not prove that the production publisher is isolated from every possible overload.
-
-Receive HWM defaults to 4096 **messages per source**, not hits. The collector drains up to 256 messages from one PACMAN at a time and combines their word bodies before NumPy decoding. This is the main optimization for the observed ~5–10-word messages; it removes most per-message NumPy/Python setup overhead while retaining bounded fairness among PACMANs. Messages are length-limited; application state uses fixed-size arrays. There is no unbounded event queue or browser queue feeding back into collection. HWM bounds are not an exact total-memory or latency guarantee; kernel/publisher queues also exist.
-
-Each browser acknowledges one snapshot before the next is sent. A slow client receives a diff against its **own last delivered state**, so skipping intermediate snapshots does not permanently lose a pixel's latest activity. Unresponsive clients time out; geometry changes trigger a reload. The default is at most four browser connections. This is intentionally a lossy visualization: it coalesces repeated hits per pixel and does not preserve individual event history.
-
-The UI distinguishes receiving/silent sources and stale/failed collector state. Its counters describe **received** data. Ordinary received message counts cannot prove that upstream/ZMQ dropped nothing; transport loss is explicitly shown as unmeasurable. Do not interpret a healthy display or matching average rates as a losslessness certification.
-
-## Benchmark and tests
+No HDF5 dependency is added to the live application. The optional offline tool
+requires `h5py` and compares streaming unrolling with Flow's array formula:
 
 ```bash
-raw-display benchmark --words 1024 --messages 10000
-raw-display benchmark --words 64 --messages 10000
-raw-display benchmark --words 8 --messages 50000 --batch-messages 256   # representative small messages
-# With the actual geometry files:
-raw-display benchmark --geometry-dir layout --words 1024 --messages 10000
-python -m pytest -q
+python tools/validate_packet_timing.py /path/to/packet-file.h5 --max-packets 2000000
 ```
 
-The benchmark replays synthetic legacy/Packet_v2 messages through the **same batched decoder** used live, then parity checking, geometry lookup and state updates. It does **not** include ZMQ reception, shared-memory publication, actual hardware bursts, browser rendering or VNC. Use `--batch-messages` to study the batching tradeoff.
+It also accepts a direct HTTPS **file** URL and uses bounded HTTP range reads,
+refusing servers that ignore Range rather than downloading the entire file.
+The supplied NERSC commissioning directory was not retrievable from the development
+environment, so **v0.4.0 has not been validated on that real packet sample**.
+Do not interpret synthetic tests as evidence about the physical source of the
+one-second bursts.
 
-Tests cover independent byte-layout examples, batched Packet_v2 extraction, parity/direction behavior, malformed-frame isolation, special words, Hydra route aliases, IO-group remapping, v2-only run-configuration validation, loopback-only web binding, snapshot catch-up, HTTP/WebSocket exchange, and an actual local ZMQ publisher/collector pair. See `VALIDATION.md` for the initial local checks and their limits.
-
-## Sources
-
-- PacMon geometry/mapping: https://github.com/BrunoGelli/2x2Pacmon/tree/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/layout
-- PacMon wire definitions: https://github.com/BrunoGelli/2x2Pacmon/tree/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/pkg
-- PacMon plot conventions: https://github.com/BrunoGelli/2x2Pacmon/blob/2cf0e2c7db056dd205efb7f41616c1795fa9ea67/cmd/pacmon/plot.go
-
-Upstream PacMon is Apache-2.0 licensed; see `NOTICE.md` for attribution. Its geometry files are downloaded separately, not silently regenerated here.
+Sources: PacMon mapping/wire definitions; DUNE `ndlar_flow` timing arithmetic
+pinned to `a0eb2f364e35340d67fd73dc09a8e8f847211a58`. See `NOTICE.md` and
+[ASIC-time implementation and test notes](docs/asic_time.md).
