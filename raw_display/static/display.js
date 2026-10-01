@@ -19,6 +19,7 @@ function receiveSync83(packet,now=performance.now()){
       throw new Error('Bad SYNC-83 source');
     ids.add(src.iog);
   }
+  window.rawTriggerUI?.receiveMeta(packet,now);
   syncMetaAt=now;
   for(const src of packet.sources){
     const old=sync83State[src.iog];
@@ -128,6 +129,7 @@ class Plane {
         const ai=(asicTime()?last<0:last===0) ? brightness.length-1 : Math.max(0,Math.min(brightness.length-1,Math.floor((now-last)/16)));
         const color=brightness[ai]*3,at=t.offsets[id-t.start];
         rgba[at]=palette[color];rgba[at+1]=palette[color+1];rgba[at+2]=palette[color+2];
+        if(window.rawTriggerUI?.state.mode!=='all')window.rawTriggerUI?.paint(rgba,at,id,now,brightness,brightness[ai]);
       }
       t.ctx.putImageData(t.data,0,0);
       const x=ox+s*(t.x_min-t.pitch/2),y=oy-s*(t.y_min+(t.height-.5)*t.pitch),w=t.width*t.pitch*s,h=t.height*t.pitch*s;
@@ -146,6 +148,7 @@ class Plane {
       const p=pixel(id),ages=paused?pausedSeen:seen,now=paused?(asicTime()?pauseClocks[this.iog]:pauseTime):displayTime(this.iog);
       const age=(asicTime()?ages[id]>=0:Boolean(ages[id])) ? `${Math.max(0,(now-ages[id])/1000).toFixed(2)} s ago` : 'not observed';
       $('tooltip').textContent=`IOG ${t.iog}  ·  Tile ${t.tile}  (geometry ${t.geometry_tile})\nChip ${p[2]}  ·  Channel ${p[3]}  ·  Pixel ${id}\nX ${(t.x_min+col*t.pitch).toFixed(2)} mm  /  Y ${(t.y_min+row*t.pitch).toFixed(2)} mm\n${asicTime()?"ASIC age at playback":"Last arrival"}: ${age}`;
+      $('tooltip').textContent+=window.rawTriggerUI?.hover(id,now)??'';
       $('tooltip').hidden=false;$('tooltip').style.left=Math.min(e.clientX+14,window.innerWidth-320)+'px';$('tooltip').style.top=Math.min(e.clientY+14,window.innerHeight-125)+'px';return;
     }
     $('tooltip').hidden=true;
@@ -154,11 +157,12 @@ class Plane {
 function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUint16(at+2,true),pixels.getUint8(at+4),pixels.getUint8(at+5)];}
 function connect(){
   const scheme=location.protocol==='https:'?'wss:':'ws:';
-  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1`);socket.binaryType='arraybuffer';
-  socket.onopen=()=>{syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
+  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1&trigger_windows=1`);socket.binaryType='arraybuffer';
+  socket.onopen=()=>{window.rawTriggerUI?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
   socket.onmessage=event=>{
     try{
       if(typeof event.data==='string'){receiveSync83(JSON.parse(event.data));return;}
+      if(window.rawTriggerUI?.receiveFrame(event.data))return;
       const d=new DataView(event.data);
       const now=performance.now();
       if(d.byteLength<12)throw new Error('Short display frame');
@@ -189,7 +193,7 @@ function connect(){
       lastFrameAt=now;socket.send(String(seq));
     }catch(err){$('notice').textContent=err.message;socket.close();}
   };
-  socket.onclose=e=>{syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
+  socket.onclose=e=>{window.rawTriggerUI?.disconnect();syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
   socket.onerror=()=>socket.close();
 }
 async function updateStatus(){
@@ -233,6 +237,7 @@ async function main(){
   meta=await response.json();const b=await (await fetch('/api/geometry.bin')).arrayBuffer();
   if(b.byteLength!==meta.n_pixels*8||meta.record_bytes!==8)throw new Error('Geometry version/length mismatch');
   pixels=new DataView(b);seen=new Float64Array(meta.n_pixels);if(asicTime())seen.fill(-1);
+  window.rawTriggerUI?.configure(meta);
   $('mode').textContent=meta.mode;$('mode').classList.toggle('demo',meta.mode==='DEMO');$('pixels').textContent=fmt(meta.n_pixels);
   for(const m of [...new Set(meta.tiles.map(t=>t.module))]){
     const box=document.createElement('section');box.className='module';
@@ -242,7 +247,7 @@ async function main(){
     for(const iog of meta.iogs.filter(i=>Math.floor((i-1)/2)===m))planes.push(new Plane(iog,box.querySelector('.planes')));
   }
   $('module').onchange=()=>{for(const [m,box]of modules)box.hidden=$('module').value!=='all'&&String(m)!==$('module').value;$('modules').classList.toggle('focus',$('module').value!=='all');};
-  $('pause').onclick=()=>{paused=!paused;if(paused){pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}$('pause').textContent=paused?'Resume live':'Pause view';};
+  $('pause').onclick=()=>{paused=!paused;window.rawTriggerUI?.setPaused(paused);if(paused){pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}$('pause').textContent=paused?'Resume live':'Pause view';};
   $('reset').onclick=()=>planes.forEach(p=>p.reset());
   $('full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});};
   $('decay').oninput=()=>{$('decayLabel').textContent=`${Number($('decay').value).toFixed(2)} s`;};
@@ -252,6 +257,7 @@ async function main(){
     requestAnimationFrame(render);
     if(now-lastDraw<1000/Number($('targetFps').value)-1)return;
     renderSync83(now);
+    window.rawTriggerUI?.renderBadges(meta,now);
     lastDraw=now;const tau=Number($('decay').value);
     if(tau!==lastTau){brightness=new Uint8Array(Math.ceil(tau*1000*8/16)+1);for(let i=0;i<brightness.length-1;i++)brightness[i]=Math.round(255*Math.exp(-i*16/(tau*1000)));lastTau=tau;}
     const fresh=lastFrameAt>0&&now-lastFrameAt<3500&&status?.collector_healthy;

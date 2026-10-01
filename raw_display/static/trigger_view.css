@@ -1,0 +1,5 @@
+.trigger-scope{color:#adbdc9;font-size:11px;line-height:1.6;margin:0 0 12px}
+.trigger-indicator{font-size:9px;font-weight:600;color:#95a7b7;border:1px solid #354954;border-radius:3px;padding:3px 4px;margin-left:4px;white-space:nowrap}
+.trigger-indicator.pulse{background:#4b4215;color:#ffe263;border-color:#b99f36}
+.trigger-indicator.unknown{opacity:.55}
+.sync83-row{display:flex;flex-wrap:wrap;gap:3px}

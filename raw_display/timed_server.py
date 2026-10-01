@@ -14,6 +14,7 @@ from .runtime import FIELDS, COL
 from .timed_runtime import snapshot_timed
 from .timing import TIMING_FIELDS, TIMING_COL, TimingConfig
 from .rate_audit import read_rate_ring
+from .observer_runtime import snapshot_with_triggers, encode_trigger_frame, read_observers
 
 HEADER = struct.Struct('<4sII')
 CLOCK = struct.Struct('<ddd')       # cursor seconds, available frontier, running
@@ -39,13 +40,14 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
     times = np.zeros((9, len(TIMING_FIELDS)))
     times[:, :2] = -1
     hub = dict(seen=np.full(len(geometry.pixels), -1.), stats=np.zeros((9, len(FIELDS))),
-               heartbeat=0., timing=times, cpu=0., sequence=0, clients=0)
+               heartbeat=0., timing=times, cpu=0., sequence=0, clients=0, tagged=None)
 
     async def pump():
         while True:
-            seen, stats, heartbeat, timing, cpu = await asyncio.to_thread(snapshot_timed, shared)
+            seen, stats, heartbeat, timing, cpu, tagged = await asyncio.to_thread(
+                snapshot_with_triggers, shared, FIELDS, TIMING_FIELDS)
             hub.update(seen=seen, stats=stats, heartbeat=heartbeat, timing=timing,
-                       cpu=cpu, sequence=(hub['sequence']+1) & 0xffffffff)
+                       cpu=cpu, tagged=tagged, sequence=(hub['sequence']+1) & 0xffffffff)
             await asyncio.sleep(1/frame_hz)
 
     @asynccontextmanager
@@ -71,6 +73,11 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
     def metadata():
         return {**geometry.metadata, 'mode': 'LIVE', 'protocol': 2,
                 'time_basis': 'asic', 'timing_config': asdict(config),
+                'feature_build': 'trigger-audit-1',
+                'trigger_view_enabled': bool(getattr(shared, 'trigger_seen', None) is not None),
+                'trigger_scope': 'same IOG only; other IO groups unaligned',
+                'trigger_pre_us': getattr(getattr(shared, 'observer_config', None), 'pre_us', 0.),
+                'trigger_post_us': getattr(getattr(shared, 'observer_config', None), 'post_us', 300.),
                 'timing_alignment': 'IOG-relative PPS epochs; cross-IOG absolute alignment unverified',
                 'wire_format': 'legacy16 / Packet_v2 / batched', 'frame_hz': frame_hz}
 
@@ -101,6 +108,21 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
                     clients=hub['clients'], transport_loss='not measurable from this stream',
                     min_raw_timestamp=config.min_raw_timestamp)
 
+    @app.get('/api/observers')
+    def observer_status():
+        data = read_observers(shared)
+        stamp = data.get('captured_monotonic')
+        data['capture_age_s'] = max(0., time.monotonic()-stamp) if stamp is not None else None
+        return JSONResponse(data, headers={'Cache-Control': 'no-store'})
+
+    @app.get('/api/timing-audit')
+    def timing_audit_status():
+        data = read_observers(shared)
+        stamp = data.get('captured_monotonic')
+        return JSONResponse(dict(version=1, session_id=data.get('session_id'), captured_monotonic=stamp, enabled_iogs=data.get('audit_iogs', []),
+            capture_age_s=max(0., time.monotonic()-stamp) if stamp is not None else None,
+            audits=data.get('audits', [])), headers={'Cache-Control': 'no-store'})
+
     @app.get('/api/tile-rates')
     def tile_rates(after: int = 0, limit: int = 100):
         try:
@@ -129,23 +151,31 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
             return
         hub['clients'] += 1
         previous, last_sequence = np.full(len(geometry.pixels), -1.), -1
+        wants_tagged = ws.query_params.get('trigger_windows') == '1'
+        previous_tagged = np.full(len(geometry.pixels), -1.) if wants_tagged else None
         try:
             while True:
                 sequence = hub['sequence']
                 if sequence == last_sequence:
                     await asyncio.sleep(1/frame_hz)
                     continue
-                current = hub['seen']
+                current, tagged = hub['seen'], hub['tagged']
                 frame = encode_timed_frame(previous, current, hub['timing'], sequence)
                 if ws.query_params.get('sync83') == '1':
                     await asyncio.wait_for(ws.send_json(sync83_message(
-                        hub['stats'], geometry.metadata['iogs'], time.monotonic(), COL)), timeout=3)
+                        hub['stats'], geometry.metadata['iogs'], time.monotonic(), COL,
+                        include_triggers=wants_tagged)), timeout=3)
+                if wants_tagged and tagged is not None:
+                    tagged_frame = encode_trigger_frame(previous_tagged, tagged, sequence)
+                    await asyncio.wait_for(ws.send_bytes(tagged_frame), timeout=3)
                 await asyncio.wait_for(ws.send_bytes(frame), timeout=3)
                 ack = await asyncio.wait_for(ws.receive_text(), timeout=3)
                 if ack != str(sequence):
                     await ws.close(code=1008)
                     return
                 previous, last_sequence = current, sequence
+                if wants_tagged and tagged is not None:
+                    previous_tagged = tagged
         except (WebSocketDisconnect, asyncio.TimeoutError, RuntimeError):
             pass
         finally:

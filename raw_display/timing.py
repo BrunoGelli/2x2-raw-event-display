@@ -157,6 +157,8 @@ class DetectorPlayback:
         self.stats['post_sync_filtered_hits'] += int(np.count_nonzero(valid & ~selected))
         self.stats['display_selected_hits'] += int(np.count_nonzero(selected))
         self.enqueue(np.asarray(ids)[selected], ticks[selected])
+        # Read-only observers consume the same results, without a second unroll.
+        return ticks, valid, selected
 
     def enqueue(self, ids, ticks):
         """Queue already validated detector ticks; no unbounded waiting/queueing."""

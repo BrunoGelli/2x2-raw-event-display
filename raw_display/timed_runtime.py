@@ -15,6 +15,8 @@ from .runtime import make_shared, COL, FIELDS, stop_collector
 from .timing import TimingConfig, DetectorPlayback, TIMING_FIELDS
 from .rate_audit import make_rate_ring, RateAudit
 from .post_sync import display_mask
+from .trigger_windows import ObserverConfig
+from .observer_runtime import attach_observers, Observers
 
 
 def snapshot_timed(shared):
@@ -37,6 +39,7 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
     stats = np.zeros((9, len(FIELDS)), dtype=np.float64)
     timing = np.zeros((9, len(TIMING_FIELDS)), dtype=np.float64)
     clocks = {i: DetectorPlayback(state, config) for i in endpoints}
+    observers = Observers(len(state), endpoints, config, shared.observer_config, shared)
     audit = RateAudit(geometry, shared.rate_ring, COL) if shared.rate_ring is not None else None
     ctx, poller = zmq.Context(), zmq.Poller()
     sockets, warned = {}, {}
@@ -91,7 +94,10 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
                 selected_count = int(np.count_nonzero(selected))
                 stats[iog, COL['post_sync_filtered_hits']] += mapped - selected_count
                 stats[iog, COL['display_selected_hits']] += selected_count
-                clocks[iog].ingest(ids, hits)
+                clock = clocks[iog]
+                initial = (clock.unroller.offset, clock.unroller.initial_tick is not None)
+                result = clock.ingest(ids, hits)
+                observers.record(iog, ids, hits, result, clock, initial)
                 if audit is not None:
                     audit.record(iog, ids, len(frames), batch_messages,
                                  now - drain_at, time.monotonic() - now)
@@ -99,6 +105,7 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
             if now - published >= 0.1:
                 for iog, clock in clocks.items():
                     clock.step(now)
+                    observers.step(iog, clock.cursor)
                     summary = clock.summary()
                     timing[iog] = [summary[key] for key in TIMING_FIELDS]
                 cpu = time.process_time()
@@ -106,10 +113,12 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
                     np.copyto(np.frombuffer(shared.seen), state)
                     np.copyto(np.frombuffer(shared.metrics).reshape(stats.shape), stats)
                     np.copyto(np.frombuffer(shared.timing).reshape(timing.shape), timing)
+                    observers.publish_state()
                     shared.heartbeat.value = now
                     shared.cpu_ratio.value = (cpu - cpu_at) / (now - published)
                 if audit is not None:
                     audit.publish(now, stats)
+                observers.publish_diagnostics(now)
                 published, cpu_at = now, cpu
     except Exception:
         log.exception('ASIC-time collector failed')
@@ -124,6 +133,7 @@ def start_timed_collector(geometry, endpoints, config=None, hwm=4096, batch_mess
     config = config or TimingConfig()
     ctx = mp.get_context('spawn')
     shared = make_shared(ctx, len(geometry.pixels))
+    attach_observers(ctx, shared, len(geometry.pixels), endpoints, ObserverConfig.from_env())
     # Compatible with a working copy that still has the optional rate-audit patch.
     if getattr(shared, 'rate_ring', None) is None:
         shared.rate_ring = make_rate_ring(ctx)
