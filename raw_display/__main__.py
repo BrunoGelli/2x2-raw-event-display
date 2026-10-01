@@ -72,7 +72,7 @@ def benchmark(geometry, words=1024, messages=2000, batch_messages=256):
 
 def parser():
     p = argparse.ArgumentParser(description='2x2 read-only raw phosphor display')
-    p.add_argument('--version', action='version', version='raw-display 0.4.1')
+    p.add_argument('--version', action='version', version='raw-display 0.4.2')
     sub = p.add_subparsers(dest='command', required=True)
     for name in ('serve', 'probe', 'check'):
         s = sub.add_parser(name)

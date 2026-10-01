@@ -1,4 +1,4 @@
-# 2×2 raw event display — v0.4.1
+# 2×2 raw event display — v0.4.2
 
 A read-only, batched PACMAN observer on **acd-daq03**, with Canvas rendering in
 ops01's browser and the existing approved forwarding/VNC workflow. Live serving
