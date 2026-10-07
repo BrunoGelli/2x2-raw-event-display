@@ -35,7 +35,7 @@ def test_canvas_source_controls_with_in_memory_transport():
     encoded = lambda b: base64.b64encode(b).decode('ascii')
     fixture = dict(meta=dict(**geo.metadata, time_basis='asic', mode='FIXTURE',
         trigger_view_enabled=True, trigger_source_protocol=1,
-        trigger_sources={'beam': 5, 'light': 6}, trigger_pre_us=0, trigger_post_us=300),
+        trigger_sources={'beam': 5, 'light': 6}, trigger_pre_us=0, trigger_post_us=190),
         geometry=encoded(geo.pixels.tobytes()), frames=[
             encoded(encode_trigger_frame(old, beam, 1, magic=b'RDB1')),
             encoded(encode_trigger_frame(old, light, 1, magic=b'RDL1')),

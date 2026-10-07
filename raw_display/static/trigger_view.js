@@ -130,7 +130,7 @@
     }else{
       const missing=iogs.filter(i=>!v.qualified.includes(i));
       const timing=v.known?`${iogs.length-missing.length}/${iogs.length} PPS epochs qualified`:'PPS qualification unknown / waiting';
-      text=`Detector-wide windows: ${meta.trigger_pre_us??0} µs before to ${meta.trigger_post_us??300} µs after t0. `+
+      text=`Detector-wide windows: ${meta.trigger_pre_us??0} µs before to ${meta.trigger_post_us??190} µs after t0. `+
         `Beam = IOG ${state.routing.beam}; Light = IOG ${state.routing.light}. ${timing}. `+
         (v.known&&missing.length?`Unqualified IOGs: ${missing.join(', ')}. `:'')+
         'Yellow = temporal candidate, not a complete event. Header labels are provisional; hardware phase is not verified.';

@@ -1,0 +1,25 @@
+'use strict';
+const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('path');
+const ctx={};vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../raw_display/static/drift_data.js'),'utf8'),ctx);
+const data=ctx.rawDriftData;
+data.configure({time_basis:'asic',view3d_enabled:false,n_pixels:3});assert.equal(data.state.pairs,null);
+data.configure({time_basis:'asic',view3d_enabled:true,n_pixels:3});
+function frame(records){const b=new ArrayBuffer(12+24*records.length),v=new DataView(b);
+ v.setUint32(0,0x52334431,false);v.setUint32(4,7,true);v.setUint32(8,records.length,true);
+ records.forEach(([id,source,hit,delta],j)=>{const o=12+24*j;v.setUint32(o,id,true);v.setUint32(o+4,source,true);v.setFloat64(o+8,hit,true);v.setBigInt64(o+16,BigInt(delta),true);});return b;}
+data.receiveFrame(frame([[1,0,1000000.00019,1900],[1,1,1000000.0002,200]]));
+assert.equal(data.current().beam.delta[1],1900);assert.equal(data.current().light.delta[1],200);
+data.setPaused(true);data.receiveFrame(frame([[1,0,1000001,100]]));
+assert.equal(data.current().beam.delta[1],1900);data.reset();assert.equal(data.current().beam.delta[1],1900);
+data.setPaused(false);assert.equal(data.current().beam.hits[1],-1);
+const geo={v_drift_mm_per_us:1.596452482154287,max_drift_distance_mm:304.31,boundary_tolerance_mm:.5};
+assert.equal(data.driftDistance(0,1e-7,geo).distance,0);
+assert(Math.abs(data.driftDistance(1000,1e-7,geo).distance-159.6452482154287)<1e-10);
+assert(data.driftDistance(1907,1e-7,geo).clamped);
+assert(!data.driftDistance(2000,1e-7,geo).valid);
+assert(!data.driftDistance(-1,1e-7,geo).valid);
+data.receiveFrame(frame([[0,0,10,12],[99,0,10,12]]));
+assert.equal(data.current().beam.hits[0],-1);assert.equal(data.state.invalidFrames,1);
+const normal=new ArrayBuffer(12);new DataView(normal).setUint32(0,0x52445032,false);
+assert.equal(data.receiveFrame(normal),false);
+console.log('R3D1 precision, atomic frame validation, bounds, pause and failure isolation passed');

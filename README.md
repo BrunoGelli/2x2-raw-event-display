@@ -1,11 +1,41 @@
 # 2×2 raw event display
 
-## Current 2D implementation
+## Current development: optional 3D
+
+`feature/3d-events` starts from the accepted **v1.0.0** commit
+`cd4f5632fe42e05ab41cb9bd5202f1fde3c5228a`. The stable tag is unchanged;
+this development package is `1.1.0.dev0`.
+
+The normal Beam/Light window is now **`[t0, t0 + 190 us)`**, including 2D.
+`RAW_DISPLAY_TRIGGER_POST_US` remains an override. Set **`RAW_DISPLAY_3D=1`**
+on the existing ASIC-time instance and select **View → 3D detector** for the
+optional local Three.js view. This also enables trigger matching. Normal hits
+glow on physical anodes; highlighted candidates drift inward using the latest
+qualifying preceding trigger for that source. Beam and Light remain independent.
+
+This is **online approximate drift visualization**: one latest ordinary hit,
+one latest Beam hit/t0 pair and one latest Light hit/t0 pair per pixel. It is
+not a full event builder. Static geometry follows pinned Flow definitions:
+x drift, y vertical, z beam; nominal velocity 1.596452482154287 mm/us at
+500 V/cm and 87.17 K. Flow/h5flow are development references, not live dependencies.
+
+The existing single SUB set, receive/drain path, ASIC/PPS timing, 1.25-second
+playback reserve, raw timestamp <10 cut and loopback-only service are preserved.
+There is no special IOG6 correction. Gate-off 2D allocates no optional pair
+state. Selecting 3D uses the same WebSocket; returning to 2D stops R3D1 requests.
+
+Read the **[3D guide and commissioning runbook](docs/3d_display.md)** and
+**[validation record](docs/3d_validation.md)**. Offline geometry, synthetic
+track and browser checks are recorded there. Current Run-3 file comparison,
+real Light-triggered cosmics and DAQ/PacMon resource/health acceptance remain
+deployment-host checks; this branch has not been deployed by this work.
+
+## Preserved 2D implementation
 
 **Release status: v1.0.0 — accepted 2D event display; see the acceptance record.**
 
 Trigger build: `detector-wide-2d-1`. Clock feature: `pps-playhead-1`.
-The package/CLI remains `0.4.2` until the explicit release preparation step.
+The accepted 2D baseline is `v1.0.0`; earlier release notes below are historical.
 These sections and the [detector-wide guide](docs/detector_wide_triggers.md)
 supersede the historical same-IOG-only/planned-feature descriptions below.
 
@@ -19,7 +49,7 @@ Each IOG retains its continuous local ASIC clock and independent buffered
 playhead. Two consistent PPS/header observations provisionally identify its
 whole-second epoch. Qualified offsets are pinned; suspect/stale epochs stop
 participating instead of shifting charge timestamps. A normal hit is selected
-for a trigger layer when its unrolled time falls in `[t0, t0+300 us)` by default.
+for a trigger layer when its unrolled time falls in `[t0, t0+190 us)` by default.
 About two seconds of bounded charge history allow late triggers to recover
 previously received hits. This is temporal candidate selection, not proof of
 causality or a saved 3D event. **The 2D phosphor can contain several triggers and
@@ -46,7 +76,7 @@ fading hits or supply a unique Beam/Light trigger timestamp.
 See [clock details and tests](docs/playback_clock.md) and the
 [version preparation, push and tag runbook](docs/v1_release.md).
 
-### Latest operator validation (reported 2026-10-06)
+### Historical operator validation (reported 2026-10-06, before v1 acceptance)
 
 Bruno ran the complete deployed checkout tests: **222 passed, 5 skipped**, before
 this clock addition. In a 119.99-second interval, IOG6 reported 162,148 mapped hits,
@@ -434,7 +464,7 @@ Enable with `RAW_DISPLAY_TRIGGER_VIEW=1` before starting the one ASIC-time colle
 
 Triggers are projected using their counter at PACMAN word bytes 4–7 and preceding valid SYNCs in the same source. Triggers before an established epoch, or trigger counters at/above one reset period, are counted as invalid for matching rather than guessed. Trigger words do not advance the canonical charge frontier.
 
-The default half-open window is `[t0, t0 + 300 µs)`, equivalent to 3,000 ticks at 100 ns/tick. Configured pre/post durations are quantized to detector ticks. Selection uses corrected detector time, never the next 300 µs of host arrivals.
+The default half-open window is `[t0, t0 + 190 µs)`, equivalent to 1,900 ticks at 100 ns/tick. Configured pre/post durations are quantized to detector ticks. Selection uses corrected detector time, never the next 190 µs of host arrivals.
 
 A late trigger can recover previously received candidates from retained history. Overlapping windows are merged and history carries matched flags to avoid repeatedly counting the same retained hit. Future matched hits wait for the **same canonical playback cursor**; no second independent detector clock is introduced. Their independent last-hit layer means unrelated later activity on a pixel does not erase its trigger-window history from window-only mode.
 
@@ -476,8 +506,10 @@ Use `raw-display serve --help` for parser details. Startup validates ranges befo
 | Variable | Default | Meaning |
 |---|---|---|
 | `RAW_DISPLAY_TRIGGER_VIEW` | `0` | Exactly `1` enables history/matching; badges do not require it. |
+| `RAW_DISPLAY_3D` | `0` | Exactly `1` enables optional latest-hit/t0 pairs and the 3D view; also enables trigger matching. |
+| `RAW_DISPLAY_3D_GEOMETRY` | Packaged artifact | Optional directory containing matching `pixels.bin` and `metadata.json`. |
 | `RAW_DISPLAY_TRIGGER_PRE_US` | `0` | 0–100000 µs before trigger. |
-| `RAW_DISPLAY_TRIGGER_POST_US` | `300` | Greater than 0, up to 100000 µs after trigger. |
+| `RAW_DISPLAY_TRIGGER_POST_US` | `190` | Greater than 0, up to 100000 µs after trigger. |
 | `RAW_DISPLAY_TRIGGER_TYPES` | Empty | All T subtypes; otherwise comma-separated byte values. |
 | `RAW_DISPLAY_TRIGGER_HISTORY_S` | `2` | 0.1–10 detector seconds of history. |
 | `RAW_DISPLAY_TRIGGER_MAX_HITS` | `500000` | Retained-hit capacity/IOG; at most 2,000,000. |
@@ -495,6 +527,7 @@ These are read when the process starts. Setting them in another terminal does no
 | `GET /` and `/static/...` | Local frontend assets. |
 | `GET /api/geometry` | Geometry metadata, hash, timing settings and feature identity. |
 | `GET /api/geometry.bin` | Fixed 8-byte pixel records. |
+| `GET /api/geometry3d.bin` | Optional static 16-byte Flow-derived records; 404 with the gate off. |
 | `GET /api/status` | Received counters, collector health/CPU and per-IOG playback state. |
 | `GET /healthz` | Collector liveness/freshness; not a detector-quality or losslessness certification. |
 | `GET /api/tile-rates` | Optional host-time rate ring; disabled status when not enabled. |
@@ -656,19 +689,29 @@ An unmapped warning can remain after a handful of historical packets; measure it
 | `raw_display/timing.py` | Stateful ASIC unroller and bounded playback. |
 | `raw_display/timed_runtime.py`, `timed_server.py`, `timing_cli.py` | ASIC collector, API/protocol and startup path. |
 | `raw_display/post_sync.py` | Display-only raw-tick policy and receipt metadata. |
-| `raw_display/trigger_windows.py`, `observer_runtime.py` | Same-IOG matching, matched state and observer publication. |
+| `raw_display/trigger_windows.py`, `detector_triggers.py`, `observer_runtime.py` | Config, detector-wide source matching, bounded state and publication. |
+| `raw_display/geometry3d.py`, `geometry3d/` | Validated static geometry loader and pinned generated artifact. |
+| `raw_display/drift_state.py` | Optional coherent latest-hit/delta pairs and R3D1 encoding. |
 | `raw_display/rate_audit.py`, `late_audit.py` | Bounded host-rate and detailed timing diagnostics. |
-| `raw_display/static/` | Canvas frontend, clock interpolation, badges and trigger controls. |
+| `raw_display/static/` | Canvas and optional local Three.js views, clock, badges and trigger controls. |
 | `tools/` | Capture, audit inspection, offline validation and benchmarks. |
 | `tests/` | Python/Node regression and localhost integration tests. |
 | `deploy/raw-display.service.example` | Reviewable service template, not automatically installed. |
 
-The next feature is a **separate triggered-event builder and 3D view**, fed from decoded/unrolled hits before reduction to last-pixel state. Planned requirements are common PPS cycle alignment, measured clock scale/offsets, configurable beam/light source identity, a bounded per-hit event buffer, late-arrival-aware completion, detector geometry/drift direction and a justified drift velocity/window. Start with `(transverse position, t_hit-t0)` if calibration is not yet ready; do not present it as calibrated spatial reconstruction.
+The next gate is **live commissioning of the optional latest-hit 3D view**.
+The earlier proposal for a separate full event builder is superseded by the
+intentionally simpler hit/t0 pair model described above. Add multi-hit/event
+identity only if operational evidence shows that this approximation is inadequate.
 
 No per-IOG timing offset was added to fix IOG 6 in the reviewed code. Its operational repair does not automatically implement cross-IOG trigger calibration. Preserve the general buffering, true-age handling, PPS veto and no-extra-subscriber architecture while adding 3D.
 
 ### Documentation provenance
 
-Implementation statements were checked against runtime commit `28a12e935eccda591373191373a90de5fd5ab818`. Measurements and the IOG 6 resolution are identified as reports from the development conversation. Proposed calibration and 3D functionality are explicitly future work. Existing version-specific notes and [VALIDATION.md](VALIDATION.md) are historical evidence, not proof that every later configuration was tested identically.
+Historical implementation statements were checked against runtime commit
+`28a12e935eccda591373191373a90de5fd5ab818`. Current 3D evidence is in
+[the new validation record](docs/3d_validation.md). Measurements and the IOG6
+resolution are identified as reports from the development conversation.
+Existing version-specific notes and [VALIDATION.md](VALIDATION.md) are
+historical evidence, not proof that every later configuration was tested identically.
 
 PacMon geometry/wire conventions and the referenced `ndlar_flow` timing code are upstream sources; retain their attribution in [NOTICE.md](NOTICE.md). This README does not establish a new license for material with no supplied licensing decision.

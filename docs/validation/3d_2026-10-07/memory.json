@@ -1,0 +1,32 @@
+[
+  {
+    "enabled": true,
+    "view3d": false,
+    "processed_hits": 2490368,
+    "cpu_seconds": 0.873328776,
+    "wall_seconds": 0.8734599869999329,
+    "million_hits_per_cpu_second": 2.851581292679173,
+    "cpu_core_equivalent_at_fixture_rate": 0.218332194,
+    "history_hits": 1261552,
+    "matched_hits": 7200,
+    "buffer_dropped_hits": 0,
+    "history_capacity_dropped_hits": 0,
+    "peak_rss_mib": 63.60546875,
+    "mode": "2d"
+  },
+  {
+    "enabled": true,
+    "view3d": true,
+    "processed_hits": 2490368,
+    "cpu_seconds": 0.8801714760000001,
+    "wall_seconds": 0.8806085810001605,
+    "million_hits_per_cpu_second": 2.829412299655118,
+    "cpu_core_equivalent_at_fixture_rate": 0.22004286900000003,
+    "history_hits": 1261552,
+    "matched_hits": 7200,
+    "buffer_dropped_hits": 0,
+    "history_capacity_dropped_hits": 0,
+    "peak_rss_mib": 63.92578125,
+    "mode": "3d"
+  }
+]

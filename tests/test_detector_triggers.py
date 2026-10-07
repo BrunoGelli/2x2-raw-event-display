@@ -101,7 +101,7 @@ def test_unexpected_trigger_source_does_not_create_event_windows(iog):
 
 def test_exact_half_open_window_after_integer_epoch_conversion():
     d = Driver().ready()
-    for channel, phase in enumerate([99, 100, 3099, 3100]):
+    for channel, phase in enumerate([99, 100, 1999, 2000]):
         d.feed(1, message(UNIX+1, charge(phase, channel=channel)))
     d.feed(5, message(UNIX+1, aux('T', 2, 100)))
     d.paint()
@@ -356,8 +356,8 @@ def test_randomized_multi_iog_repeated_pixels_match_independent_oracle(seed):
     light = rng.integers(100, R-4000, size=18)
     expected = {name: np.full(1024, -1.) for name in ['beam', 'light']}
     # The same channel fires many times; include guaranteed near-boundary cases.
-    phases = np.r_[rng.integers(100, R-4000, size=80), beam, beam+2999, beam+3000,
-                   light, light+2999, light+3000]
+    phases = np.r_[rng.integers(100, R-4000, size=80), beam, beam+1899, beam+1900,
+                   light, light+1899, light+1900]
     channels = rng.integers(0, 8, size=len(phases))
     order = np.argsort(phases)
     phases, channels = phases[order], channels[order]
@@ -368,7 +368,7 @@ def test_randomized_multi_iog_repeated_pixels_match_independent_oracle(seed):
             d.feed(i, message(UNIX+1, *words[start:start+step]))
         for name, triggers in [('beam', beam), ('light', light)]:
             selected = np.any((phases[:, None] >= triggers) &
-                              (phases[:, None] < triggers+3000), axis=1)
+                              (phases[:, None] < triggers+1900), axis=1)
             np.maximum.at(expected[name], i*64+channels[selected], (d.tick(i)+phases[selected])/R)
     d.feed(5, message(UNIX+1, *[aux('T', 2, int(t)) for t in sorted(beam)]))
     d.feed(6, message(UNIX+1, *[aux('T', 2, int(t)) for t in sorted(light)]))

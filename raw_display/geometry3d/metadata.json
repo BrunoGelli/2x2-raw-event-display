@@ -1,0 +1,2301 @@
+{
+  "artifact_sha256": "7c1f7aabf0cf75fd4cd9d062b3f2762a45e0482cc23f764c38fdaad4b942ae86",
+  "axes": {
+    "x": "drift",
+    "y": "vertical",
+    "z": "beam"
+  },
+  "boundary_tolerance_mm": 0.5,
+  "cathode_thickness_mm": 0.0,
+  "coordinate_units": "mm",
+  "crs_geometry_inputs": [
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod0_swap_T8T4T7.yaml",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod1_noswap.yaml",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.5.16_mod2_swap_T7T8.yaml",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod3_swap_T5T8_T9T10.yaml"
+  ],
+  "detector_bounds_mm": [
+    [
+      -639.3099975585938,
+      -620.760009765625,
+      -645.3800048828125
+    ],
+    [
+      639.3099975585938,
+      620.760009765625,
+      645.3800048828125
+    ]
+  ],
+  "detector_geometry_input": "data/proto_nd_flow/2x2.yaml",
+  "detector_yaml_drift_length_mm": 302.72249999999997,
+  "e_field_v_per_cm": 500.0,
+  "flow_commit": "5d63843212cd32d88de2c15d5ffa95b8d43b50a5",
+  "flow_configured_vdrift_mm_per_us": [
+    1.583
+  ],
+  "flow_ref": "develop",
+  "flow_repository": "DUNE/ndlar_flow",
+  "max_drift_distance_mm": 304.31,
+  "max_drift_source": "Geometry.max_drift_distance: CRS drift_length if present, else half anode spacing",
+  "max_drift_time_us": 190.61638439081983,
+  "modules": [
+    {
+      "bounds_mm": [
+        [
+          30.690000534057617,
+          -620.760009765625,
+          24.6200008392334
+        ],
+        [
+          639.3099975585938,
+          620.760009765625,
+          645.3800048828125
+        ]
+      ],
+      "cathode_x_mm": 335.0,
+      "module": 0,
+      "pixel_pitch_mm": 4.434
+    },
+    {
+      "bounds_mm": [
+        [
+          30.690000534057617,
+          -620.760009765625,
+          -645.3800048828125
+        ],
+        [
+          639.3099975585938,
+          620.760009765625,
+          -24.6200008392334
+        ]
+      ],
+      "cathode_x_mm": 335.0,
+      "module": 1,
+      "pixel_pitch_mm": 4.434
+    },
+    {
+      "bounds_mm": [
+        [
+          -639.3099975585938,
+          -620.760009765625,
+          24.619998931884766
+        ],
+        [
+          -30.690000534057617,
+          620.760009765625,
+          645.3799438476562
+        ]
+      ],
+      "cathode_x_mm": -335.0,
+      "module": 2,
+      "pixel_pitch_mm": 3.87975
+    },
+    {
+      "bounds_mm": [
+        [
+          -639.3099975585938,
+          -620.760009765625,
+          -645.3800048828125
+        ],
+        [
+          -30.690000534057617,
+          620.760009765625,
+          -24.6200008392334
+        ]
+      ],
+      "cathode_x_mm": -335.0,
+      "module": 3,
+      "pixel_pitch_mm": 4.434
+    }
+  ],
+  "n_pixels": 337600,
+  "pacmon_commit": "2cf0e2c7db056dd205efb7f41616c1795fa9ea67",
+  "raw_geometry_sources": {
+    "geometry_mod0_v4.json": "027c002a554e37baa96944a797c9577cb9488e1a302d5f3c2fca8ac09124b2c5",
+    "geometry_mod1_v4.json": "50d23712074ad690480177b3c6c1e4e96679f7f813afec9571b3fb9761e9aa5f",
+    "geometry_mod2_v4.json": "d548d2192f89b9bd03a3152d30f35405cbeb253c95d7d5044cedfa884084601c",
+    "geometry_mod3_v4.json": "78e62d75fca8dfb1cc807c043cc462f265e5e2fd75fed32a8dfabf92169e2c00"
+  },
+  "raw_iogs": {
+    "1": {
+      "count": 39200,
+      "raw_pixels_sha256": "d2270c09c16ba1275c870152a29c0697d2b2930efc2504ab54585fa822f60b39",
+      "start": 0
+    },
+    "2": {
+      "count": 39200,
+      "raw_pixels_sha256": "e0a85cba0952e94cefc032958a7a4b5bbd1daa89f4b327e189c5af3172701fde",
+      "start": 39200
+    },
+    "3": {
+      "count": 39200,
+      "raw_pixels_sha256": "ad8a2b58d8b4f379f622a9fcbc7ec1836b9b92d44752ee4f5827c0b1be50115e",
+      "start": 78400
+    },
+    "4": {
+      "count": 39200,
+      "raw_pixels_sha256": "3e03a3b0ecbe4a46929cb48eabe88ce4151a72aa8c588ed10055b134824eb6da",
+      "start": 117600
+    },
+    "5": {
+      "count": 51200,
+      "raw_pixels_sha256": "f29c8bbe5b08aa8894f02ee559055146b38cd8bac57a25857b24fe3a8390f9ea",
+      "start": 156800
+    },
+    "6": {
+      "count": 51200,
+      "raw_pixels_sha256": "d2e7a24c7558498da655b7620d967c04c0106a9cb9313451980ea5ee8953e37b",
+      "start": 208000
+    },
+    "7": {
+      "count": 39200,
+      "raw_pixels_sha256": "faf70825a6e7cf1b0d460e0d43cfed47ce82d9909b14f38180d22441d56c882f",
+      "start": 259200
+    },
+    "8": {
+      "count": 39200,
+      "raw_pixels_sha256": "08aa6f0c4483d32a7f62876d2cf5ae6c4765f0a1b37503cf98b2c75bbf6e75d4",
+      "start": 298400
+    }
+  },
+  "record_bytes": 16,
+  "source_sha256": {
+    "data/proto_nd_flow/2x2.yaml": "de44ab4681997c2bfb484fa7753adedae69055029ea84d8ea9d4cc39bae2ad75",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod0_swap_T8T4T7.yaml": "81356898ecbc6df80d88c957c881f5574726dac28c187bc034d56c3b08ef0a3b",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod1_noswap.yaml": "76b8655c620845b03deba922f7dc6379fa216880b65b9e16eac020b743f1b447",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.3.16_mod3_swap_T5T8_T9T10.yaml": "8405fe36ea401f532fa80a4315d0de8fb3a576cdcbb7be45a29b23af9d1ae324",
+    "data/proto_nd_flow/layouts_v5/multi_tile_layout-2.5.16_mod2_swap_T7T8.yaml": "da3c08437a110d644c97abd71d48a8ecffb42d5d31d539c8711b0ac278b0ed37",
+    "src/module0_flow/util/units.py": "275e5438dd4efea787fc8f041c20457c5a516aac88691e6fede3228706f764b2",
+    "src/proto_nd_flow/reco/combined/drift_reco.py": "416244b2d8cf2a0e7122974a6e908b21dac74d7d9ffb1b87f5313b5f110944d9",
+    "src/proto_nd_flow/resources/geometry.py": "d069c50c707913968f7ff66633159cb144e48223384febcff6a06ec2cb1f086c",
+    "src/proto_nd_flow/resources/lar_data.py": "0ddee3f13e0676aa98b124af6e29ed2a502770ac3109f3af49a0b828017ec9f6",
+    "src/proto_nd_flow/util/lut.py": "a94bfe0e60292e2503374cf2f7456e0ddc982952c44507b4f02c7422da53c90a",
+    "src/proto_nd_flow/util/units.py": "275e5438dd4efea787fc8f041c20457c5a516aac88691e6fede3228706f764b2",
+    "yamls/proto_nd_flow/resources/GeometryData.yaml": "da5684d85b423ef97e89b0d98ed184efa269ec97f57cddadee75697f5283bd7f",
+    "yamls/proto_nd_flow/resources/LArData.yaml": "0927de44b3add1e3e9b1eb1044a847b62c30a4963f535a7aa4d6cbd30a448d6d"
+  },
+  "temperature_k": 87.17,
+  "v_drift_mm_per_us": 1.596452482154287,
+  "validation": {
+    "direct_yaml_max_error_mm": 6.15234374663487e-05,
+    "electronics_aliases_checked": 1350400,
+    "mapped_pixels": 337600,
+    "reference_samples": [
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 0,
+        "io_channel": 1,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 317.031005859375,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 2450,
+        "io_channel": 1,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 472.22100830078125,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 4899,
+        "io_channel": 1,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 591.9390258789062,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 4900,
+        "io_channel": 5,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 614.1090087890625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 7350,
+        "io_channel": 5,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 458.91900634765625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 9799,
+        "io_channel": 5,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 339.2010192871094,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 9800,
+        "io_channel": 9,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 6.651000022888184,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 12250,
+        "io_channel": 9,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 161.8409881591797,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 14699,
+        "io_channel": 9,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 281.5589904785156,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 14700,
+        "io_channel": 13,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -317.031005859375,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 17150,
+        "io_channel": 13,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -472.22100830078125,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 19599,
+        "io_channel": 13,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -591.9390258789062,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 19600,
+        "io_channel": 17,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -303.72900390625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 22050,
+        "io_channel": 17,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -148.53900146484375,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 24499,
+        "io_channel": 17,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -28.821001052856445,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 24500,
+        "io_channel": 21,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -6.651000022888184,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 26950,
+        "io_channel": 21,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -161.8409881591797,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 29399,
+        "io_channel": 21,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -281.5589904785156,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 29400,
+        "io_channel": 25,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 303.72900390625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 31850,
+        "io_channel": 25,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 148.53900146484375,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 34299,
+        "io_channel": 25,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 28.821001052856445,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 34300,
+        "io_channel": 29,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -614.1090087890625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 36750,
+        "io_channel": 29,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -458.91900634765625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 39199,
+        "io_channel": 29,
+        "iog": 1,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -339.2010192871094,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 39200,
+        "io_channel": 1,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 317.031005859375,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 41650,
+        "io_channel": 1,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 472.22100830078125,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 44099,
+        "io_channel": 1,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 591.9390258789062,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 44100,
+        "io_channel": 5,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 614.1090087890625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 46550,
+        "io_channel": 5,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 458.91900634765625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 48999,
+        "io_channel": 5,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 339.2010192871094,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 49000,
+        "io_channel": 9,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 6.651000022888184,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 51450,
+        "io_channel": 9,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 161.8409881591797,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 53899,
+        "io_channel": 9,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 281.5589904785156,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 53900,
+        "io_channel": 13,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 303.72900390625,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 56350,
+        "io_channel": 13,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 148.53900146484375,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 58799,
+        "io_channel": 13,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 28.821001052856445,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 58800,
+        "io_channel": 17,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -303.72900390625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 61250,
+        "io_channel": 17,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -148.53900146484375,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 63699,
+        "io_channel": 17,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -28.821001052856445,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 63700,
+        "io_channel": 21,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -6.651000022888184,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 66150,
+        "io_channel": 21,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -161.8409881591797,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 68599,
+        "io_channel": 21,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -281.5589904785156,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 68600,
+        "io_channel": 25,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -614.1090087890625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 71050,
+        "io_channel": 25,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -458.91900634765625,
+        "z_mm": 629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 73499,
+        "io_channel": 25,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -339.2010192871094,
+        "z_mm": 350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 73500,
+        "io_channel": 29,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -317.031005859375,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 75950,
+        "io_channel": 29,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -472.22100830078125,
+        "z_mm": 40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 78399,
+        "io_channel": 29,
+        "iog": 2,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -591.9390258789062,
+        "z_mm": 319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 78400,
+        "io_channel": 1,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 317.031005859375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 80850,
+        "io_channel": 1,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 472.22100830078125,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 83299,
+        "io_channel": 1,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 591.9390258789062,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 83300,
+        "io_channel": 5,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 614.1090087890625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 85750,
+        "io_channel": 5,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 458.91900634765625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 88199,
+        "io_channel": 5,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 339.2010192871094,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 88200,
+        "io_channel": 9,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 6.651000022888184,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 90650,
+        "io_channel": 9,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 161.8409881591797,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 93099,
+        "io_channel": 9,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 281.5589904785156,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 93100,
+        "io_channel": 13,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 303.72900390625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 95550,
+        "io_channel": 13,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 148.53900146484375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 97999,
+        "io_channel": 13,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": 28.821001052856445,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 98000,
+        "io_channel": 17,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -303.72900390625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 100450,
+        "io_channel": 17,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -148.53900146484375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 102899,
+        "io_channel": 17,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -28.821001052856445,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 102900,
+        "io_channel": 21,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -6.651000022888184,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 105350,
+        "io_channel": 21,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -161.8409881591797,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 107799,
+        "io_channel": 21,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -281.5589904785156,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 107800,
+        "io_channel": 25,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -614.1090087890625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 110250,
+        "io_channel": 25,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -458.91900634765625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 112699,
+        "io_channel": 25,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -339.2010192871094,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 112700,
+        "io_channel": 29,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -317.031005859375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 115150,
+        "io_channel": 29,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -472.22100830078125,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 117599,
+        "io_channel": 29,
+        "iog": 3,
+        "x_anode_mm": 639.3099975585938,
+        "y_mm": -591.9390258789062,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 117600,
+        "io_channel": 1,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 317.031005859375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 120050,
+        "io_channel": 1,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 472.22100830078125,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 122499,
+        "io_channel": 1,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 591.9390258789062,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 122500,
+        "io_channel": 5,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 614.1090087890625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 124950,
+        "io_channel": 5,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 458.91900634765625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 127399,
+        "io_channel": 5,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 339.2010192871094,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 127400,
+        "io_channel": 9,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 6.651000022888184,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 129850,
+        "io_channel": 9,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 161.8409881591797,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 132299,
+        "io_channel": 9,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 281.5589904785156,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 132300,
+        "io_channel": 13,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 303.72900390625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 134750,
+        "io_channel": 13,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 148.53900146484375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 137199,
+        "io_channel": 13,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": 28.821001052856445,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 137200,
+        "io_channel": 17,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -303.72900390625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 139650,
+        "io_channel": 17,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -148.53900146484375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 142099,
+        "io_channel": 17,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -28.821001052856445,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 142100,
+        "io_channel": 21,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -6.651000022888184,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 144550,
+        "io_channel": 21,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -161.8409881591797,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 146999,
+        "io_channel": 21,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -281.5589904785156,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 147000,
+        "io_channel": 25,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -614.1090087890625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 149450,
+        "io_channel": 25,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -458.91900634765625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 151899,
+        "io_channel": 25,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -339.2010192871094,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 151900,
+        "io_channel": 29,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -317.031005859375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 154350,
+        "io_channel": 29,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -472.22100830078125,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 156799,
+        "io_channel": 29,
+        "iog": 4,
+        "x_anode_mm": 30.690000534057617,
+        "y_mm": -591.9390258789062,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 156800,
+        "io_channel": 1,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 312.31988525390625,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 160000,
+        "io_channel": 1,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 467.5098876953125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 163199,
+        "io_channel": 1,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 591.661865234375,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 163200,
+        "io_channel": 5,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 618.8201293945312,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 166400,
+        "io_channel": 5,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 463.630126953125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 169599,
+        "io_channel": 5,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 339.4781188964844,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 169600,
+        "io_channel": 9,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 1.9398750066757202,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 172800,
+        "io_channel": 9,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 157.1298828125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 175999,
+        "io_channel": 9,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 281.2818603515625,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 176000,
+        "io_channel": 13,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 308.44012451171875,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 179200,
+        "io_channel": 13,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 153.2501220703125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 182399,
+        "io_channel": 13,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 29.098125457763672,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 182400,
+        "io_channel": 17,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -308.44012451171875,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 185600,
+        "io_channel": 17,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -153.2501220703125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 188799,
+        "io_channel": 17,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -29.098125457763672,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 188800,
+        "io_channel": 21,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -1.9398750066757202,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 192000,
+        "io_channel": 21,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -157.1298828125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 195199,
+        "io_channel": 21,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -281.2818603515625,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 195200,
+        "io_channel": 25,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -312.31988525390625,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 198400,
+        "io_channel": 25,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -467.5098876953125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 201599,
+        "io_channel": 25,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -591.661865234375,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 201600,
+        "io_channel": 29,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -618.8201293945312,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 204800,
+        "io_channel": 29,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -463.630126953125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 207999,
+        "io_channel": 29,
+        "iog": 5,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -339.4781188964844,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 208000,
+        "io_channel": 1,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 312.31988525390625,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 211200,
+        "io_channel": 1,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 467.5098876953125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 214399,
+        "io_channel": 1,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 591.661865234375,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 214400,
+        "io_channel": 5,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 618.8201293945312,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 217600,
+        "io_channel": 5,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 463.630126953125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 220799,
+        "io_channel": 5,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 339.4781188964844,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 220800,
+        "io_channel": 9,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 1.9398750066757202,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 224000,
+        "io_channel": 9,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 157.1298828125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 227199,
+        "io_channel": 9,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 281.2818603515625,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 227200,
+        "io_channel": 13,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 308.44012451171875,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 230400,
+        "io_channel": 13,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 153.2501220703125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 233599,
+        "io_channel": 13,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 29.098125457763672,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 233600,
+        "io_channel": 17,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -308.44012451171875,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 236800,
+        "io_channel": 17,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -153.2501220703125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 239999,
+        "io_channel": 17,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -29.098125457763672,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 240000,
+        "io_channel": 21,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -1.9398750066757202,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 243200,
+        "io_channel": 21,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -157.1298828125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 246399,
+        "io_channel": 21,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -281.2818603515625,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 246400,
+        "io_channel": 25,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -618.8201293945312,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 249600,
+        "io_channel": 25,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -463.630126953125,
+        "z_mm": 631.8009033203125
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 252799,
+        "io_channel": 25,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -339.4781188964844,
+        "z_mm": 348.5791320800781
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 252800,
+        "io_channel": 29,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -312.31988525390625,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 256000,
+        "io_channel": 29,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -467.5098876953125,
+        "z_mm": 38.19912338256836
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 259199,
+        "io_channel": 29,
+        "iog": 6,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -591.661865234375,
+        "z_mm": 321.4208679199219
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 259200,
+        "io_channel": 1,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 317.031005859375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 261650,
+        "io_channel": 1,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 472.22100830078125,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 264099,
+        "io_channel": 1,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 591.9390258789062,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 264100,
+        "io_channel": 5,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 614.1090087890625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 266550,
+        "io_channel": 5,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 458.91900634765625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 268999,
+        "io_channel": 5,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 339.2010192871094,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 269000,
+        "io_channel": 9,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 6.651000022888184,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 271450,
+        "io_channel": 9,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 161.8409881591797,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 273899,
+        "io_channel": 9,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 281.5589904785156,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 273900,
+        "io_channel": 13,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 303.72900390625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 276350,
+        "io_channel": 13,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 148.53900146484375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 278799,
+        "io_channel": 13,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": 28.821001052856445,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 278800,
+        "io_channel": 17,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -317.031005859375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 281250,
+        "io_channel": 17,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -472.22100830078125,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 283699,
+        "io_channel": 17,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -591.9390258789062,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 283700,
+        "io_channel": 21,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -6.651000022888184,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 286150,
+        "io_channel": 21,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -161.8409881591797,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 288599,
+        "io_channel": 21,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -281.5589904785156,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 288600,
+        "io_channel": 25,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -614.1090087890625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 291050,
+        "io_channel": 25,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -458.91900634765625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 293499,
+        "io_channel": 25,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -339.2010192871094,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": -1,
+        "id": 293500,
+        "io_channel": 29,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -303.72900390625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": -1,
+        "id": 295950,
+        "io_channel": 29,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -148.53900146484375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": -1,
+        "id": 298399,
+        "io_channel": 29,
+        "iog": 7,
+        "x_anode_mm": -30.690000534057617,
+        "y_mm": -28.821001052856445,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 298400,
+        "io_channel": 1,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 614.1090087890625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 300850,
+        "io_channel": 1,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 458.91900634765625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 303299,
+        "io_channel": 1,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 339.2010192871094,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 303300,
+        "io_channel": 5,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 317.031005859375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 305750,
+        "io_channel": 5,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 472.22100830078125,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 308199,
+        "io_channel": 5,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 591.9390258789062,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 308200,
+        "io_channel": 9,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 6.651000022888184,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 310650,
+        "io_channel": 9,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 161.8409881591797,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 313099,
+        "io_channel": 9,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 281.5589904785156,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 313100,
+        "io_channel": 13,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 303.72900390625,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 315550,
+        "io_channel": 13,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 148.53900146484375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 317999,
+        "io_channel": 13,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": 28.821001052856445,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 318000,
+        "io_channel": 17,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -303.72900390625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 320450,
+        "io_channel": 17,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -148.53900146484375,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 322899,
+        "io_channel": 17,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -28.821001052856445,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 322900,
+        "io_channel": 21,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -6.651000022888184,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 325350,
+        "io_channel": 21,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -161.8409881591797,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 327799,
+        "io_channel": 21,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -281.5589904785156,
+        "z_mm": -350.51898193359375
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 327800,
+        "io_channel": 25,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -614.1090087890625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 330250,
+        "io_channel": 25,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -458.91900634765625,
+        "z_mm": -40.138999938964844
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 332699,
+        "io_channel": 25,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -339.2010192871094,
+        "z_mm": -319.4809875488281
+      },
+      {
+        "channel": 0,
+        "chip": 11,
+        "drift_dir": 1,
+        "id": 332700,
+        "io_channel": 29,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -317.031005859375,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 0,
+        "chip": 61,
+        "drift_dir": 1,
+        "id": 335150,
+        "io_channel": 29,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -472.22100830078125,
+        "z_mm": -629.8609619140625
+      },
+      {
+        "channel": 63,
+        "chip": 110,
+        "drift_dir": 1,
+        "id": 337599,
+        "io_channel": 29,
+        "iog": 8,
+        "x_anode_mm": -639.3099975585938,
+        "y_mm": -591.9390258789062,
+        "z_mm": -350.51898193359375
+      }
+    ],
+    "run3_file_comparison": "not performed; no representative Run-3 Flow file supplied"
+  },
+  "velocity_source": "LArData.electron_mobility(E,T) * E; nominal field parameterization",
+  "version": 1
+}

@@ -1,0 +1,7 @@
+.detector3d {margin:0 24px 20px;border:1px solid #284352;border-radius:8px;overflow:hidden;background:#07121a;}
+.detector3d[hidden] {display:none;}
+.detector3d-note {padding:10px 14px;color:#adc3d0;font-size:12px;line-height:1.6;border-bottom:1px solid #284352;}
+#detector3d-canvas {width:100%;height:min(68vh,820px);min-height:420px;}
+#detector3d-canvas canvas {display:block;width:100%;height:100%;touch-action:none;}
+#detector3d-canvas.offline canvas {opacity:.4;}
+#detector3d-error {padding:8px 24px;color:#f2bc82;}

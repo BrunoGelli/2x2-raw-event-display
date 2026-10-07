@@ -27,7 +27,9 @@ def setup():
     ns = dict(geometry=SimpleNamespace(metadata=dict(iogs=[6])),
               FIELDS=fields,COL={k:j for j,k in enumerate(fields)},
               TIMING_FIELDS=('cursor_s','frontier_s'),
-              hub=dict(stats=stats,timing=times,heartbeat=99.9,cpu=.1,clients=1),
+              hub=dict(stats=stats,timing=times,heartbeat=99.9,cpu=.1,clients=1,clients3d=0,
+                       drift_bytes_sent=0,drift_transport_errors=0,websocket_bytes_sent=0),
+              enabled3d=False,geometry3d=None,geometry3d_error=None,mode='LIVE',
               time=SimpleNamespace(monotonic=lambda:100.,time=lambda:wall[0]),
               shared=object(),read_observers=lambda _:observers,
               proc=SimpleNamespace(is_alive=lambda:True),config=SimpleNamespace(min_raw_timestamp=10))
