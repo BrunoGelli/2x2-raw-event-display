@@ -12,7 +12,7 @@ const ctx={console,DataView,ArrayBuffer,Float64Array,Uint8Array,Uint32Array,Int3
 vm.createContext(ctx);vm.runInContext(source,ctx);
 vm.runInContext("meta={time_basis:'asic',geometry_id:'test',iogs:[1,6]};seen=new Float64Array(3);seen.fill(-1);connect();",ctx);
 ctx.ws.onopen();
-assert(ctx.ws.url.endsWith('&sync83=1'));
+assert(ctx.ws.url.includes('&sync83=1'));
 function send(count,age,group=1){ctx.ws.onmessage({data:JSON.stringify({type:'sync83',version:1,sources:[{iog:group,count,age_s:age}]})});}
 function view(iog=1,t=now){return vm.runInContext(`sync83View(${iog},${t})`,ctx);}
 send(100,.1);assert.strictEqual(view().kind,'live'); // initial history is NOT a new flash

@@ -18,7 +18,7 @@ SYNC/heartbeat words never become triggers.
 
 Each eligible trigger is translated to every configured, qualified IOG's local
 detector epoch. Its half-open charge window remains `[t0-pre, t0+post)`, default
-`[t0, t0+300 microseconds)`. Missing/unqualified targets are counted and skipped.
+`[t0, t0+190 microseconds)`. Missing/unqualified targets are counted and skipped.
 A trigger before qualification is not retrospectively invented; target hit
 history can recover eligible charge received before a later trigger.
 

@@ -129,11 +129,11 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
         ctx.term()
 
 
-def start_timed_collector(geometry, endpoints, config=None, hwm=4096, batch_messages=256):
+def start_timed_collector(geometry, endpoints, config=None, hwm=4096, batch_messages=256, observer_config=None):
     config = config or TimingConfig()
     ctx = mp.get_context('spawn')
     shared = make_shared(ctx, len(geometry.pixels))
-    attach_observers(ctx, shared, len(geometry.pixels), endpoints, ObserverConfig.from_env())
+    attach_observers(ctx, shared, len(geometry.pixels), endpoints, observer_config or ObserverConfig.from_env())
     # Compatible with a working copy that still has the optional rate-audit patch.
     if getattr(shared, 'rate_ring', None) is None:
         shared.rate_ring = make_rate_ring(ctx)

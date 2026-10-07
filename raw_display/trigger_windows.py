@@ -15,13 +15,14 @@ import numpy as np
 class ObserverConfig:
     trigger_view: bool = False
     pre_us: float = 0.0
-    post_us: float = 300.0
+    post_us: float = 190.0
     history_seconds: float = 2.0
     max_history_hits: int = 500_000
     max_chunks: int = 4096
     max_windows: int = 2048
     trigger_types: tuple = ()  # empty means any PACMAN T-word subtype
     audit_iogs: tuple = ()
+    view3d: bool = False
 
     def __post_init__(self):
         if not (math.isfinite(self.pre_us) and 0 <= self.pre_us <= 100_000):
@@ -44,12 +45,15 @@ class ObserverConfig:
         enabled = os.environ.get('RAW_DISPLAY_TRIGGER_VIEW', '0')
         if enabled not in ('0', '1'):
             raise ValueError('RAW_DISPLAY_TRIGGER_VIEW must be 0 or 1')
+        view3d = os.environ.get('RAW_DISPLAY_3D', '0')
+        if view3d not in ('0', '1'):
+            raise ValueError('RAW_DISPLAY_3D must be 0 or 1')
         def integers(key):
             text = os.environ.get(key, '').strip()
             return tuple(sorted(set(int(v.strip(), 0) for v in text.split(',')))) if text else ()
-        return cls(trigger_view=enabled == '1',
+        return cls(trigger_view=enabled == '1' or view3d == '1', view3d=view3d == '1',
                    pre_us=float(os.environ.get('RAW_DISPLAY_TRIGGER_PRE_US', '0')),
-                   post_us=float(os.environ.get('RAW_DISPLAY_TRIGGER_POST_US', '300')),
+                   post_us=float(os.environ.get('RAW_DISPLAY_TRIGGER_POST_US', '190')),
                    history_seconds=float(os.environ.get('RAW_DISPLAY_TRIGGER_HISTORY_S', '2')),
                    max_history_hits=int(os.environ.get('RAW_DISPLAY_TRIGGER_MAX_HITS', '500000')),
                    trigger_types=integers('RAW_DISPLAY_TRIGGER_TYPES'),

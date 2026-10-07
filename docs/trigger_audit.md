@@ -62,7 +62,7 @@ hits keep their old age. The playhead and rollover algorithm are not modified.
 ### Deliberately same-IOG matching only
 
 A trigger is compared **only with charge in the IO group carrying that trigger**.
-The default half-open window is `[t0, t0 + 300 microseconds)`. Thus, with triggers
+The default half-open window is `[t0, t0 + 190 microseconds)`. Thus, with triggers
 present in only two PACMANs, trigger-only mode will not populate the other six
 IO groups. The UI states this limitation explicitly. A blank unmatched plane
 is not a detector-efficiency measurement.
@@ -87,7 +87,7 @@ are supported; triggers do not themselves advance the canonical charge frontier.
 |---|---|---|
 | `RAW_DISPLAY_TRIGGER_VIEW` | `0` | Set exactly `1` to enable hit history/matching. Badges do not require it. |
 | `RAW_DISPLAY_TRIGGER_PRE_US` | `0` | Lower bound is `t0 - pre`; supports 0..100000 microseconds. |
-| `RAW_DISPLAY_TRIGGER_POST_US` | `300` | Exclusive upper bound is `t0 + post`; supports >0..100000 microseconds. |
+| `RAW_DISPLAY_TRIGGER_POST_US` | `190` | Exclusive upper bound is `t0 + post`; supports >0..100000 microseconds. |
 | `RAW_DISPLAY_TRIGGER_TYPES` | empty | All T-word subtypes; otherwise comma-separated integer byte values. No beam/light labels are guessed. |
 | `RAW_DISPLAY_TRIGGER_HISTORY_S` | `2` | Detector-time retention for matching late triggers; 0.1..10 seconds. |
 | `RAW_DISPLAY_TRIGGER_MAX_HITS` | `500000` | Retained-hit limit **per IOG**; 1..2000000. |

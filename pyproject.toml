@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ndlar-raw-display"
-version = "1.0.0"
-description = "Read-only PACMAN observer and browser-based 2D phosphor display for ND-LAr 2x2"
+version = "1.1.0.dev0"
+description = "Read-only PACMAN observer with 2D phosphor and optional approximate 3D drift views"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.23,<3", "pyzmq>=25,<28", "fastapi>=0.100,<1", "uvicorn>=0.23,<1", "websockets>=11,<16"]
 
@@ -17,7 +17,7 @@ validation = ["h5py>=3.8"]
 raw-display = "raw_display.__main__:main"
 
 [tool.setuptools.package-data]
-raw_display = ["static/*"]
+raw_display = ["static/*", "static/vendor/*", "geometry3d/*"]
 
 [tool.setuptools.packages.find]
 include = ["raw_display*"]

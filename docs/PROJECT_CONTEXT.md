@@ -1,6 +1,56 @@
 # 2×2 raw event display — project handoff and conversation context
 
-## Continuation snapshot — 2026-10-06, after detector-wide live check
+## Current continuation — 2026-10-07, optional 3D development
+
+The user-designated accepted baseline is **v1.0.0**, commit
+`cd4f5632fe42e05ab41cb9bd5202f1fde3c5228a`. Work is on `feature/3d-events`,
+package `1.1.0.dev0`; v1.0.0 has not been rewritten or retagged. This section
+supersedes the old release state and proposed full-event architecture below.
+
+The requested first 3D version deliberately retains **latest hit per pixel**:
+one ordinary hit and one `(hit, associated t0)` pair for each of Beam and Light.
+For overlapping windows, greatest qualifying `t0 <= hit` wins. Equal-hit late
+triggers may revise t0. The backend stores exact integer `hit_tick-t0_tick`
+beside existing IOG-local hit seconds, updates pairs coherently and preserves
+the existing bounded shared history. It does not introduce an event builder.
+
+The normal 2D/3D window is now `[t0,t0+190 us)`; the existing post-window
+override remains. `RAW_DISPLAY_3D=1` enables optional paired state and the
+**3D detector** view. Gate-off 2D keeps its original state allocation. One
+collector still owns the same single PACMAN SUB set; receive/drain, normal
+unrolling, raw timestamp <10 cut, PPS alignment, playback reserve and displayed
+clock remain. There is no IOG6- or Beam-specific timing correction.
+
+Geometry is generated offline from Flow develop commit
+`5d63843212cd32d88de2c15d5ffa95b8d43b50a5`, indexed by all 337,600 raw pixel
+IDs and checked over all four Hydra aliases. Axes are x drift, y vertical,
+z beam. The actual Geometry resource yields a 304.31 mm maximum drift;
+nominal mobility at 500 V/cm, 87.17 K yields 1.596452482154287 mm/us. The guide
+explains why these differ from the detector-YAML drift length and configured
+data velocity. Do not silently mix those choices or tune arbitrary offsets.
+The live runtime loads binary/JSON only; h5flow is not a runtime dependency.
+
+The new R3D1 binary extension is requested only while needed, over the existing
+WebSocket. RDP2/RDT1/source protocols remain supported. Local pinned Three.js
+renders normal anode activity plus optional drift candidates, with existing
+source/mode/persistence/pause controls. Static geometry loads once. Optional
+transport/WebGL failure falls back to 2D. This is approximate visualization,
+not precision calibrated reconstruction; Beam t0 can be spill-referenced.
+
+Read [3D implementation and commissioning](3d_display.md) and
+[validation evidence/remaining gates](3d_validation.md). Synthetic tracks
+exercise actual decode/timing/routing and browser reconstruction across all
+8 IOGs. A current Run-3 Flow HDF5 file and live DAQ host were not supplied;
+the read-only comparison tool and commissioning runbook are provided, but
+real cosmics and DAQ/PacMon health have not been verified in this session.
+
+Main new files: `geometry3d.py`, `drift_state.py`, `static/drift_data.js`,
+`static/display3d.js`, packaged `geometry3d/`, `tools/generate_geometry3d.py`,
+`tools/compare_flow_geometry3d.py`, `tools/synthetic_3d.py` and corresponding
+geometry, pairing, protocol and WebGL tests. The test record distinguishes
+available regressions from the environment-blocked real-ZMQ integration tests.
+
+## Historical snapshot — 2026-10-06, after detector-wide live check
 
 **State at this handoff:** detector-wide 2D is deployed by Bruno and visually
 working; a small clock extension is prepared but still needs his installation
@@ -25,7 +75,7 @@ its own `/api/geometry.playback_clock = "pps-playhead-1"` marker. CLI version
   calibration is performed. Header assembly time is not a latched PPS edge:
   stable whole-second bias cannot be excluded by consistency alone.
 * Each IOG's existing normal unroller and independent 1.25-second-reserve
-  playback are unchanged. Trigger matching uses default `[t0,t0+300 us)` in
+  playback are unchanged. Trigger matching uses default `[t0,t0+190 us)` in
   continuous ticks, including rollover, and shared bounded charge history for
   late triggers. Beam and Light retain separate per-pixel last-hit times.
 * 2D rendering is a phosphor history, **not a unique event bunch per frame**.
@@ -126,7 +176,7 @@ The next major development is trigger-packet-based 3D reconstruction. It has **n
 
 ### Compact start-of-next-chat briefing
 
-> Continue `BrunoGelli/2x2-raw-event-display`, not the separate NERSC display. The working baseline is v0.4.2 / runtime commit `28a12e9`, feature build `trigger-audit-1`. Backend and the single PACMAN subscriber set run on acd-daq03; Canvas rendering runs in the ops01 browser; shifters use existing VNC/approved forwarding. HTTP/WebSocket must bind only to 127.0.0.1. Use `/data/2x2-raw-event-display` and its own `.venv`; do not resurrect competing bundles or `-next` as another deployment. Legacy 8+16-byte PACMAN framing and Packet_v2-compatible ASICs only. Batched decoding, geometry LUT, stateful PPS/S83 unrolling, bounded ASIC-time playback and raw timestamp <10 display veto are working. S83 RX and T-word trigger badges are implemented. Optional yellow/trigger-only selection is same-IOG only, default [t0,t0+300 µs). IOG 5 is the beam source and IOG 6 the light source according to Bruno's routing description; do not guess numerical subtype identities. The actual IOG 6 timing fault is now fixed: earlier offsets were diagnostic hypotheses, not a calibration to retain. Build the next 3D path from decoded/unrolled per-hit data, not the reduced phosphor state. Retain read-only/bounded/no-extra-subscription behavior and verify repository state before writing.
+> Continue `BrunoGelli/2x2-raw-event-display`, not the separate NERSC display. The working baseline is v0.4.2 / runtime commit `28a12e9`, feature build `trigger-audit-1`. Backend and the single PACMAN subscriber set run on acd-daq03; Canvas rendering runs in the ops01 browser; shifters use existing VNC/approved forwarding. HTTP/WebSocket must bind only to 127.0.0.1. Use `/data/2x2-raw-event-display` and its own `.venv`; do not resurrect competing bundles or `-next` as another deployment. Legacy 8+16-byte PACMAN framing and Packet_v2-compatible ASICs only. Batched decoding, geometry LUT, stateful PPS/S83 unrolling, bounded ASIC-time playback and raw timestamp <10 display veto are working. S83 RX and T-word trigger badges are implemented. Optional yellow/trigger-only selection is same-IOG only, default [t0,t0+190 µs). IOG 5 is the beam source and IOG 6 the light source according to Bruno's routing description; do not guess numerical subtype identities. The actual IOG 6 timing fault is now fixed: earlier offsets were diagnostic hypotheses, not a calibration to retain. Build the next 3D path from decoded/unrolled per-hit data, not the reduced phosphor state. Retain read-only/bounded/no-extra-subscription behavior and verify repository state before writing.
 
 ## 2. What this project is—and is not
 
@@ -243,7 +293,7 @@ Per-IOG `SYNC 83 RX` indicators were also added. They are driven by observed rec
 
 `TRG RX` counts PACMAN T words, distinct from SYNC/heartbeat S words. Trigger counters/subtypes are available even without optional history matching. Numerical T subtypes have not been equated with beam/light by guesswork.
 
-With `RAW_DISPLAY_TRIGGER_VIEW=1`, the browser offers all activity, yellow highlighted windows, and window-only activity. Default matching is `[t0,t0+300 µs)`, using unrolled detector times. A separate layer preserves the timestamp of a matched hit even if an unrelated hit later fires the same pixel. A late trigger can select previously retained charge from bounded history; future/late candidates follow the existing playback clock and retain their age.
+With `RAW_DISPLAY_TRIGGER_VIEW=1`, the browser offers all activity, yellow highlighted windows, and window-only activity. Default matching is `[t0,t0+190 µs)`, using unrolled detector times. A separate layer preserves the timestamp of a matched hit even if an unrelated hit later fires the same pixel. A late trigger can select previously retained charge from bounded history; future/late candidates follow the existing playback clock and retain their age.
 
 Matching remains **same IOG only**. Bruno identifies IOG 5 as beam-trigger input and IOG 6 as light-trigger input. Only seeing IOG 6 candidates does not prove a missing IOG 5 feature: subtype counts, invalid T times and matching counters must be inspected. A Beam/Light/Both source selector and cross-IOG propagation are not implemented.
 
@@ -358,7 +408,10 @@ Important retained evidence files from the conversation:
 
 The handoff does not upload these raw diagnostic files to GitHub or expose their data as a new public artifact. Their numerical lessons are summarized here. The latest IOG 6 resolution is Bruno's operational update; no post-fix regression run was performed for this documentation task.
 
-## 10. Next steps: separate event building and 3D
+## 10. Historical proposal: separate event building and 3D
+
+Superseded for the current iteration by the latest-hit/t0 design in the
+2026-10-07 continuation above. This records the earlier discussion only.
 
 Start from the working canonical architecture rather than replacing it. The natural input to a new event builder is the decoded, unrolled per-hit stream **before** it is reduced to one latest timestamp per pixel.
 
@@ -370,7 +423,7 @@ Planned sequence:
 4. Retain bounded per-hit windows and allow late arrivals before declaring an event ready. Source coverage, drops and calibration quality should be visible.
 5. First expose `(transverse pixel position, t_hit-t0)` as a trigger-relative candidate view. Then map drift distance with a configured velocity, anode coordinate and drift sign, respecting detector bounds and trigger offsets.
 
-The discussed 300 µs window is an initial configurable choice, not a proven maximum drift time for every setting. Beam spill timing and light-trigger timing need not be interchangeable physical t0 definitions. Plotly.js was a proposed 3D renderer, not an already integrated dependency. Serve any future assets locally rather than through a CDN.
+The discussed 190 µs window is an initial configurable choice, not a proven maximum drift time for every setting. Beam spill timing and light-trigger timing need not be interchangeable physical t0 definitions. Plotly.js was a proposed 3D renderer, not an already integrated dependency. Serve any future assets locally rather than through a CDN.
 
 A shared PPS offers a useful clock-rate reference: compare observed interval ticks with 10^7, but also match physical cycles and validate fixed delays. This calibration was discussed and is not yet implemented. Do not import the old IOG6 phase-offset hypothesis as a shortcut.
 

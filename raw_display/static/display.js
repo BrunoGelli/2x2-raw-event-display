@@ -4,6 +4,13 @@ const $ = id => document.getElementById(id);
 let meta, pixels, seen, pausedSeen, pauseTime=0, paused=false, socket;
 let lastFrameAt=0, status=null, oldStatus=null, oldStatusAt=0, retry=null;
 const planes=[], modules=new Map();
+let detector3d=null,loading3d=null,pausedRevision=0;
+function fail3d(error){
+  if(window.rawDriftData)window.rawDriftData.state.wanted=false;
+  const note=$('detector3d-error');if(note){note.hidden=false;note.textContent=`3D unavailable: ${error.message}. The 2D display remains available.`;}
+  if($('module')?.value==='3d'){$('module').value='all';$('module').onchange?.();}
+}
+window.rawDisplay3D=()=>detector3d;
 // This indicator reports collector arrival, NOT delayed detector playback.
 // It is driven by observed subtype-83 counters, never by an artificial 1 Hz timer.
 let syncLinkUp=false, syncMetaAt=-Infinity;
@@ -65,7 +72,10 @@ function displayTime(iog,now=performance.now()){
 window.rawDisplayDiagnostics=()=>({...viewAudit,timeBasis:meta?.time_basis||'host',
   clocks:clocks.slice(1).map((c,i)=>({iog:i+1,...c})),
   sync83:sync83State.slice(1).map((s,i)=>({iog:i+1,...s,...sync83View(i+1)})),
-  collectorHealthy:status?.collector_healthy,paused});
+  collectorHealthy:status?.collector_healthy,paused,
+  view3d:window.rawDriftData?{enabled:window.rawDriftData.state.enabled,requested:window.rawDriftData.state.wanted,
+    bytes:window.rawDriftData.state.bytes,frames:window.rawDriftData.state.frames,error:window.rawDriftData.state.error,
+    ...detector3d?.diagnostics}:null});
 const fmt = n => n.toLocaleString(undefined,{maximumFractionDigits:1});
 const rateText = n => n >= 1000 ? `${(n/1000).toFixed(1)}k` : n.toFixed(0);
 const palette = new Uint8Array(256*3);
@@ -158,10 +168,11 @@ function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUin
 function connect(){
   const scheme=location.protocol==='https:'?'wss:':'ws:';
   socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1&trigger_windows=1&trigger_sources=1`);socket.binaryType='arraybuffer';
-  socket.onopen=()=>{window.rawPlaybackClock?.reset();window.rawTriggerUI?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
+  socket.onopen=()=>{window.rawPlaybackClock?.reset();window.rawTriggerUI?.reset();window.rawDriftData?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
   socket.onmessage=event=>{
     try{
       if(typeof event.data==='string'){receiveSync83(JSON.parse(event.data));return;}
+      if(window.rawDriftData?.receiveFrame(event.data)){if(window.rawDriftData.state.error)fail3d(Error(window.rawDriftData.state.error));return;}
       if(window.rawTriggerUI?.receiveFrame(event.data))return;
       const d=new DataView(event.data);
       const now=performance.now();
@@ -190,7 +201,7 @@ function connect(){
       }else throw new Error('Unsupported display frame');
       if(viewAudit.frames)viewAudit.maxFrameGapMs=Math.max(viewAudit.maxFrameGapMs,now-lastFrameAt);
       viewAudit.frames++;
-      lastFrameAt=now;window.rawPlaybackClock?.frame(now);socket.send(String(seq));
+      lastFrameAt=now;window.rawPlaybackClock?.frame(now);socket.send(meta.view3d_enabled?JSON.stringify({ack:seq,view3d:window.rawDriftData?.state.wanted===true}):String(seq));
     }catch(err){$('notice').textContent=err.message;socket.close();}
   };
   socket.onclose=e=>{window.rawPlaybackClock?.disconnect();window.rawTriggerUI?.disconnect();syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
@@ -231,7 +242,8 @@ async function updateStatus(){
     if(!status.collector_healthy)notice+='  COLLECTOR NOT HEALTHY — activity may be stale.';
     if(malformed>0)notice+='  Check wire format: malformed messages were rejected.';
     if(unknown>0)notice+='  Some accepted hits are absent from the selected geometry.';
-    $('notice').textContent=notice;$('notice').className=(!status.collector_healthy||malformed||unknown)?'warning':'';
+    if(meta.mode==='SYNTHETIC')notice='SYNTHETIC — static geometrical tracks through the backend. No PACMAN connections; no live timing or DAQ-health claim.';
+    $('notice').textContent=notice;$('notice').className=meta.mode!=='SYNTHETIC'&&(!status.collector_healthy||malformed||unknown)?'warning':'';
     oldStatus=status;oldStatusAt=now;
   }catch(err){window.rawPlaybackClock?.statusFailed(clockToken);viewAudit.statusErrors++;status=null;$('notice').textContent='Status unavailable — do not interpret the view as live.';$('notice').className='warning';}
 }
@@ -241,6 +253,8 @@ async function main(){
   if(b.byteLength!==meta.n_pixels*8||meta.record_bytes!==8)throw new Error('Geometry version/length mismatch');
   pixels=new DataView(b);seen=new Float64Array(meta.n_pixels);if(asicTime())seen.fill(-1);
   window.rawTriggerUI?.configure(meta);
+  window.rawDriftData?.configure(meta);
+  if(meta.view3d_error)fail3d(Error(meta.view3d_error));
   window.rawPlaybackClock?.configure(meta);
   $('mode').textContent=meta.mode;$('mode').classList.toggle('demo',meta.mode==='DEMO');$('pixels').textContent=fmt(meta.n_pixels);
   for(const m of [...new Set(meta.tiles.map(t=>t.module))]){
@@ -250,9 +264,25 @@ async function main(){
     const opt=document.createElement('option');opt.value=String(m);opt.textContent=`Module ${m}`;$('module').appendChild(opt);
     for(const iog of meta.iogs.filter(i=>Math.floor((i-1)/2)===m))planes.push(new Plane(iog,box.querySelector('.planes')));
   }
-  $('module').onchange=()=>{for(const [m,box]of modules)box.hidden=$('module').value!=='all'&&String(m)!==$('module').value;$('modules').classList.toggle('focus',$('module').value!=='all');};
-  $('pause').onclick=()=>{paused=!paused;window.rawTriggerUI?.setPaused(paused);if(paused){pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}window.rawPlaybackClock?.setPaused(paused,pauseClocks,clocks.map(c=>c.running),pauseTime);$('pause').textContent=paused?'Resume live':'Pause view';};
-  $('reset').onclick=()=>planes.forEach(p=>p.reset());
+  if(meta.view3d_enabled){
+    const option=document.createElement('option');option.value='3d';option.textContent='3D detector';$('module').appendChild(option);
+  }
+  $('module').onchange=async()=>{
+    const selected=$('module').value,is3d=selected==='3d';
+    for(const [m,box]of modules)box.hidden=selected!=='all'&&String(m)!==selected;
+    $('modules').hidden=is3d;$('modules').classList.toggle('focus',selected!=='all');
+    if($('detector3d'))$('detector3d').hidden=!is3d;
+    if(window.rawDriftData)window.rawDriftData.state.wanted=false;
+    if(!is3d)return;
+    try{
+      if(window.rawDriftData.state.error)throw Error(window.rawDriftData.state.error);
+      if(!loading3d)loading3d=import('/static/display3d.js?v=3d-candidates-1').then(m=>m.createDetector3D(meta,pixels,$('detector3d-canvas')));
+      detector3d=await loading3d;
+      window.rawDriftData.state.wanted=$('module').value==='3d';
+    }catch(error){fail3d(error);}
+  };
+  $('pause').onclick=()=>{paused=!paused;window.rawTriggerUI?.setPaused(paused);window.rawDriftData?.setPaused(paused);if(paused){pausedRevision=viewAudit.frames;pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}window.rawPlaybackClock?.setPaused(paused,pauseClocks,clocks.map(c=>c.running),pauseTime);$('pause').textContent=paused?'Resume live':'Pause view';};
+  $('reset').onclick=()=>{$('module').value==='3d'?detector3d?.reset():planes.forEach(p=>p.reset());};
   $('full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});};
   $('decay').oninput=()=>{$('decayLabel').textContent=`${Number($('decay').value).toFixed(2)} s`;};
   connect();await updateStatus();setInterval(updateStatus,1000);
@@ -264,10 +294,23 @@ async function main(){
     window.rawTriggerUI?.renderBadges(meta,now);
     lastDraw=now;const tau=Number($('decay').value);
     if(tau!==lastTau){brightness=new Uint8Array(Math.ceil(tau*1000*8/16)+1);for(let i=0;i<brightness.length-1;i++)brightness[i]=Math.round(255*Math.exp(-i*16/(tau*1000)));lastTau=tau;}
-    const fresh=lastFrameAt>0&&now-lastFrameAt<3500&&status?.collector_healthy;
+    const fresh=lastFrameAt>0&&now-lastFrameAt<3500&&(status?.collector_healthy||meta.mode==='SYNTHETIC');
     $('modules').classList.toggle('offline',!fresh);
     $('connection').textContent=fresh?(paused?'View paused · ingest continues':'Receiving snapshots'):'Stream stale / waiting';
-    for(const plane of planes){const t=paused?(asicTime()?pauseClocks[plane.iog]:pauseTime):displayTime(plane.iog,now);plane.draw(t,paused?pausedSeen:seen,brightness);}
+    if($('module').value==='3d'&&detector3d){
+      try{
+        const trigger=window.rawTriggerUI.state;
+        detector3d.render({normal:paused?pausedSeen:seen,clocks:paused?pauseClocks:clocks.map((c,i)=>displayTime(i,now)),
+          normalRevision:paused?pausedRevision:viewAudit.frames,paused,tau,mode:trigger.mode,source:trigger.source,fresh});
+        const d=detector3d.diagnostics;
+        $('detector3d-detail').textContent=`Drag to orbit · wheel to zoom · double-click/Reset zoom to reset. `+
+          (trigger.mode==='all'?'All activity on anode planes. ':trigger.source==='light'?'Light-referenced drift candidate. ':'Beam-referenced drift candidate: spill timing may differ from interaction t0. ')+
+          (paused&&!window.rawDriftData.state.frozenHasSnapshot?'Resume once to receive a 3D snapshot. ': '')+
+          `Current pairs: ${d.clampedCandidates} tiny boundary clamps; ${d.rejectedCandidates} invalid/out-of-range rejected.`;
+      }catch(error){fail3d(error);}
+    }else{
+      for(const plane of planes){const t=paused?(asicTime()?pauseClocks[plane.iog]:pauseTime):displayTime(plane.iog,now);plane.draw(t,paused?pausedSeen:seen,brightness);}
+    }
     window.rawPlaybackClock?.render(paused?pauseClocks:clocks.map((c,i)=>displayTime(i,now)),clocks.map(c=>c.running),now);
     nframes++;if(now-fpsStart>1000){$('fps').textContent=(nframes*1000/(now-fpsStart)).toFixed(0);nframes=0;fpsStart=now;}
   }

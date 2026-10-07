@@ -8,14 +8,18 @@ from collections import deque
 import numpy as np
 from .common_timing import SOURCE_NAMES, TRIGGER_SOURCES, CommonPpsAligner
 from .trigger_windows import DueLayer, project_triggers
+from .drift_state import PairedDueLayer
 
 SOURCE_BITS = {'beam': np.uint8(1), 'light': np.uint8(2)}
 
 
 class DetectorWindows:
-    def __init__(self, states, timing, config):
+    def __init__(self, states, timing, config, drift_ticks=None):
         self.config, self.timing = config, timing
-        self.layers = {name: DueLayer(states[name], timing, config) for name in SOURCE_NAMES}
+        self.paired = drift_ticks is not None
+        self.layers = {name: (PairedDueLayer(states[name], drift_ticks[name], timing, config)
+                             if self.paired else DueLayer(states[name], timing, config)) for name in SOURCE_NAMES}
+        self.trigger_ticks = {name: np.empty(0, dtype=np.int64) for name in SOURCE_NAMES} if self.paired else {}
         self.pre = int(round(config.pre_us * 1e-6 / timing.tick_seconds))
         self.post = max(1, int(round(config.post_us * 1e-6 / timing.tick_seconds)))
         self.history_ticks = int(round(config.history_seconds / timing.tick_seconds))
@@ -27,7 +31,8 @@ class DetectorWindows:
                           association_resets=0, reset_discarded_history_hits=0,
                           reset_discarded_pending_hits=0)
         self.source_stats = {name: dict(selected_triggers=0, matched_hits=0,
-                             outside_history_triggers=0, window_limit_drops=0)
+                             outside_history_triggers=0, window_limit_drops=0,
+                             association_trigger_limit_drops=0)
                              for name in SOURCE_NAMES}
 
     def _mask(self, ticks, source):
@@ -47,13 +52,30 @@ class DetectorWindows:
         self.history, self.n_history = kept, sum(len(c[0]) for c in kept)
         for source in SOURCE_NAMES:
             self.windows[source] = [(lo, hi) for lo, hi in self.windows[source] if hi > cutoff]
+            if self.paired:
+                values = self.trigger_ticks[source]
+                self.trigger_ticks[source] = values[values + self.post > cutoff]
         self.last_trim = self.frontier
         return cutoff
 
     def _tag(self, ids, ticks, bits, source):
         bit = SOURCE_BITS[source]
-        selected = self._mask(ticks, source) & ((bits & bit) == 0)
-        self.layers[source].add(ids[selected], ticks[selected])
+        matched = self._mask(ticks, source)
+        selected = matched & ((bits & bit) == 0)
+        if self.paired:
+            # Revisit already matched hits too: a late, more recent trigger can
+            # improve t0 without changing the hit or double-counting matches.
+            hits = ticks[matched]
+            triggers = self.trigger_ticks[source]
+            delta = np.full(len(hits), -1, dtype=np.int64)
+            if len(triggers):
+                which = np.searchsorted(triggers, hits, side='right') - 1
+                candidate = hits - triggers[np.maximum(which, 0)]
+                valid = (which >= 0) & (candidate >= 0) & (candidate < self.post)
+                delta[valid] = candidate[valid]
+            self.layers[source].add(ids[matched], hits, delta)
+        else:
+            self.layers[source].add(ids[selected], ticks[selected])
         self.source_stats[source]['matched_hits'] += int(np.count_nonzero(selected))
         self.stats['matched_hits'] += int(np.count_nonzero(selected & (bits == 0)))
         bits[selected] |= bit
@@ -91,6 +113,10 @@ class DetectorWindows:
         coverage = max(cutoff, self.first_tick if self.first_tick is not None else cutoff)
         stats['outside_history_triggers'] += int(np.count_nonzero(ticks-self.pre < coverage))
         additions = [(int(t)-self.pre, int(t)+self.post) for t in ticks if t+self.post > cutoff]
+        if self.paired:
+            values = np.unique(np.r_[self.trigger_ticks[source], ticks[ticks + self.post > cutoff]])
+            stats['association_trigger_limit_drops'] += max(0, len(values) - self.config.max_windows)
+            self.trigger_ticks[source] = values[-self.config.max_windows:]
         merged = []
         for lo, hi in sorted(self.windows[source]+additions):
             if merged and lo <= merged[-1][1]:
@@ -120,6 +146,8 @@ class DetectorWindows:
         self.first_tick = None
         for name, layer in self.layers.items():
             self.windows[name] = []
+            if self.paired:
+                self.trigger_ticks[name] = np.empty(0, dtype=np.int64)
             self.stats['reset_discarded_pending_hits'] += layer.pending
             layer.heap.clear()
             layer.pending = 0
@@ -143,7 +171,8 @@ class DetectorTriggerRouter:
         self.config, self.timing = config, timing
         self.aligner = CommonPpsAligner(iogs, timing)
         self.states = {name: np.full(n_pixels, -1.) for name in SOURCE_NAMES} if config.trigger_view else {}
-        self.matchers = {i: DetectorWindows(self.states, timing, config) for i in iogs} if config.trigger_view else {}
+        self.drift_ticks = {name: np.full(n_pixels, -1, dtype=np.int64) for name in SOURCE_NAMES} if config.trigger_view and config.view3d else {}
+        self.matchers = {i: DetectorWindows(self.states, timing, config, self.drift_ticks or None) for i in iogs} if config.trigger_view else {}
         self.frontiers = {i: None for i in iogs}
         self.generation = 0
         self.stats = dict(unexpected_source_triggers=0, invalid_trigger_times=0,
@@ -159,6 +188,8 @@ class DetectorTriggerRouter:
                 matcher.clear()
             for state in self.states.values():
                 state.fill(-1.)
+            for delta in self.drift_ticks.values():
+                delta.fill(-1)
             self.generation = self.aligner.generation
 
     def expire(self, now):

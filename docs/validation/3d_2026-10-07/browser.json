@@ -1,0 +1,29 @@
+{
+  "2d": {
+    "fps": "27",
+    "enabled": true,
+    "requested": false,
+    "bytes": 0,
+    "frames": 0,
+    "error": null
+  },
+  "3d": {
+    "fps": "30",
+    "enabled": true,
+    "requested": true,
+    "bytes": 272844,
+    "frames": 13,
+    "error": null,
+    "clampedCandidates": 0,
+    "rejectedCandidates": 0,
+    "draws": 45,
+    "geometryPixels": 337600,
+    "normalPoints": 437,
+    "beamPoints": 437,
+    "lightPoints": 437
+  },
+  "fixture_connections": 1,
+  "geometry_fetches": 1,
+  "track_points": 437,
+  "maximum_position_error_mm": 0.07907644907635358
+}

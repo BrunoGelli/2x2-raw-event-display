@@ -1,7 +1,9 @@
 """ASIC-time default entry point; old demo/check/benchmark commands still work."""
 import argparse
+from dataclasses import replace
 import json
 import logging
+import os
 import sys
 import time
 import numpy as np
@@ -9,6 +11,7 @@ from .runtime import read_endpoints, read_asic_versions, DEFAULT_RUN_CONFIG, sto
 from .geometry import load_geometry
 from .timing import TimingConfig, TIMING_COL
 from .timed_runtime import start_timed_collector, snapshot_timed
+from .trigger_windows import ObserverConfig
 
 
 def run(args):
@@ -29,17 +32,28 @@ def run(args):
         versions = read_asic_versions(args.run_config, endpoints)
         geo = load_geometry(args.geometry_dir, endpoints)
         geo.metadata['asic_versions'] = versions
+        observers = ObserverConfig.from_env()
+        geometry3d, geometry3d_error = None, None
+        if observers.view3d:
+            from .geometry3d import load_geometry3d, DEFAULT_DIRECTORY
+            try:
+                geometry3d = load_geometry3d(geo, os.environ.get('RAW_DISPLAY_3D_GEOMETRY', DEFAULT_DIRECTORY))
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                geometry3d_error = str(exc)
+                logging.warning('3D disabled; continuing normal 2D display: %s', exc)
+                observers = replace(observers, view3d=False)
         print(f'ASIC-TIME / LEGACY16 / PACKET-V2: {len(geo.pixels):,} pixels, IOGs {list(endpoints)}', flush=True)
         print(f'PPS subtype={config.sync_type}, rollover={config.rollover_ticks}, '
               f'tick={args.tick_ns:g} ns, playback reserve={config.playback_delay:g} s. '
               f'display cut: raw timestamp < {config.min_raw_timestamp} ticks. '
               'IOG-relative epochs; waiting for PPS, no arrival-time fallback.', flush=True)
-        shared, proc = start_timed_collector(geo, endpoints, config, args.hwm, args.batch_messages)
+        shared, proc = start_timed_collector(geo, endpoints, config, args.hwm, args.batch_messages, observers)
         try:
             if args.command == 'serve':
                 import uvicorn
                 from .timed_server import create_timed_app
-                uvicorn.run(create_timed_app(geo, shared, proc, config, args.frame_hz, args.max_clients),
+                uvicorn.run(create_timed_app(geo, shared, proc, config, args.frame_hz, args.max_clients,
+                                            geometry3d=geometry3d, geometry3d_error=geometry3d_error),
                             host='127.0.0.1', port=args.port, workers=1, access_log=False,
                             ws_max_size=1024, ws_max_queue=1, ws_per_message_deflate=False)
             else:

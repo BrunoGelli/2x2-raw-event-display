@@ -45,11 +45,11 @@ def fixture(seconds, drain_messages):
     return data
 
 
-def run(data, enabled):
+def run(data, enabled, view3d=False):
     normal=np.full(8*64,-1.)
     tc=TimingConfig()
     clocks={i:DetectorPlayback(normal,tc) for i in range(1,9)}
-    router=DetectorTriggerRouter(len(normal),range(1,9),tc,ObserverConfig(trigger_view=enabled))
+    router=DetectorTriggerRouter(len(normal),range(1,9),tc,ObserverConfig(trigger_view=enabled,view3d=view3d))
     processed=0
     def feed(iog, frames, now):
         nonlocal processed
@@ -77,7 +77,7 @@ def run(data, enabled):
     assert router.aligner.generation==0
     histories=[m.summary() for m in router.matchers.values()]
     assert all(m['history_capacity_dropped_hits']==0 for m in histories)
-    return normal,dict(enabled=enabled,processed_hits=processed,cpu_seconds=cpu,wall_seconds=wall,
+    return normal,dict(enabled=enabled,view3d=view3d,processed_hits=processed,cpu_seconds=cpu,wall_seconds=wall,
         million_hits_per_cpu_second=processed/cpu/1e6,
         cpu_core_equivalent_at_fixture_rate=cpu/len(data),
         history_hits=sum(m['history_hits'] for m in histories),
@@ -90,6 +90,7 @@ def main():
     p.add_argument('--seconds',type=int,default=4)
     p.add_argument('--repeats',type=int,default=3)
     p.add_argument('--drain-messages',type=int,default=256)
+    p.add_argument('--include-3d',action='store_true',help='Also benchmark optional hit/t0 pair association')
     a=p.parse_args()
     if not 2<=a.seconds<=20 or not 1<=a.repeats<=10 or not 1<=a.drain_messages<=256:
         p.error('seconds 2..20, repeats 1..10, drain-messages 1..256 required')
@@ -98,6 +99,10 @@ def main():
         off,r0=run(data,False);on,r1=run(data,True)
         np.testing.assert_array_equal(off,on)
         results.extend([r0,r1])
+        if a.include_3d:
+            paired,r2=run(data,True,True)
+            np.testing.assert_array_equal(off,paired)
+            results.append(r2)
     print(json.dumps(dict(python=platform.python_version(),numpy=np.__version__,
         platform=platform.platform(),simulated_seconds=a.seconds,
         simulated_aggregate_hits_per_second=len(data[0])*a.drain_messages*8*8,

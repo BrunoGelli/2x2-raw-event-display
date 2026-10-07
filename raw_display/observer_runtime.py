@@ -29,6 +29,9 @@ def attach_observers(ctx, shared, n_pixels, iogs, config):
     shared.observer_lock = ctx.Lock()
     shared.trigger_seen = ctx.RawArray('d', n_pixels) if config.trigger_view else None
     shared.trigger_source_seen = {name: ctx.RawArray('d', n_pixels) for name in SOURCE_NAMES} if config.trigger_view else {}
+    shared.drift_ticks = {name: ctx.RawArray('q', n_pixels) for name in SOURCE_NAMES} if config.trigger_view and config.view3d else {}
+    for layer in shared.drift_ticks.values():
+        np.frombuffer(layer, dtype=np.int64).fill(-1)
     for layer in shared.trigger_source_seen.values():
         np.frombuffer(layer).fill(-1.)
     if shared.trigger_seen is not None:
@@ -47,7 +50,7 @@ def read_observers(shared):
     return json.loads(raw)
 
 
-def snapshot_with_triggers(shared, fields, timing_fields, include_sources=False):
+def snapshot_with_triggers(shared, fields, timing_fields, include_sources=False, include_3d=False):
     """Coherent normal/matched state and clocks. Legacy callers retain their API."""
     with shared.lock:
         state = np.frombuffer(shared.seen).copy()
@@ -59,7 +62,11 @@ def snapshot_with_triggers(shared, fields, timing_fields, include_sources=False)
         matched = np.frombuffer(extra).copy() if extra is not None else None
         sources = {name: np.frombuffer(layer).copy() for name, layer in
                    getattr(shared, 'trigger_source_seen', {}).items()} if include_sources else {}
+        drifts = {name: np.frombuffer(layer, dtype=np.int64).copy() for name, layer in
+                  getattr(shared, 'drift_ticks', {}).items()} if include_3d else {}
     result = (state, stats, heartbeat, timing, cpu, matched)
+    if include_3d:
+        return result + (sources, drifts)
     return result + (sources,) if include_sources else result
 
 
@@ -119,6 +126,8 @@ class Observers:
             np.copyto(np.frombuffer(self.shared.trigger_seen), tagged)
             for name, state in self.router.states.items():
                 np.copyto(np.frombuffer(self.shared.trigger_source_seen[name]), state)
+            for name, delta in self.router.drift_ticks.items():
+                np.copyto(np.frombuffer(self.shared.drift_ticks[name], dtype=np.int64), delta)
 
     def publish_diagnostics(self, now):
         if self.published is not None and now-self.published < 1.:
@@ -134,6 +143,8 @@ class Observers:
                        scope='detector-wide candidates on qualified PPS epochs',
                        **self.router.summary(now),
                        pre_us=self.config.pre_us, post_us=self.config.post_us,
+                       view3d_enabled=self.config.view3d,
+                       trigger_association='latest qualifying preceding trigger per source' if self.config.view3d else 'merged candidate windows',
                        history_seconds=self.config.history_seconds,
                        trigger_types=list(self.config.trigger_types), audit_iogs=list(self.config.audit_iogs),
                        sources=sources, audits=[self.audits[i].summary() for i in self.config.audit_iogs],
