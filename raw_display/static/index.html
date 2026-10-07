@@ -1,16 +1,21 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>2×2 · Raw charge live</title><link rel="stylesheet" href="/static/style.css?v=0.4.1"><link rel="stylesheet" href="/static/trigger_view.css?v=detector-wide-2d-1"></head>
+<title>2×2 · Raw charge live</title><link rel="stylesheet" href="/static/style.css?v=0.4.1"><link rel="stylesheet" href="/static/trigger_view.css?v=detector-wide-2d-1"><link rel="stylesheet" href="/static/playback_clock.css?v=pps-playhead-1"></head>
 <body>
 <header><div class="brand"><span class="mark">2×2</span><div><div class="eyebrow">ND-LAr · ONLINE OBSERVER</div><h1>Raw charge live</h1></div></div>
 <div class="connection"><span id="mode" class="badge">LOADING</span><span id="connection">Connecting…</span></div></header>
 <section class="metrics"><div><span class="label">MAPPED ACTIVITY</span><strong id="rate">—</strong><small>hits / second</small></div><div><span class="label">OBSERVED SOURCES</span><strong id="sources">—</strong><small>receiving / configured</small></div><div><span class="label">PHYSICAL PIXELS</span><strong id="pixels">—</strong><small>from geometry · not enabled count</small></div><div><span class="label">BROWSER</span><strong id="fps">—</strong><small>frames / second · local rendering</small></div></section>
+<section id="playback-clock" class="playback-clock" data-state="warming" aria-label="Displayed detector time">
+<div><span class="clock-label">DISPLAYED DETECTOR TIME · PPS-LABELLED ESTIMATE</span><strong id="playback-clock-time">Waiting for qualified timestamps…</strong><small id="playback-clock-detail">Playhead time, not a unique event. Fading hits can be older.</small></div>
+<label>Time zone <select id="playback-clock-zone"><option value="America/Chicago">Fermilab (Chicago)</option><option value="UTC">UTC</option></select></label>
+</section>
 <nav><label>Persistence <input id="decay" type="range" min="0.05" max="3" value="0.65" step="0.05"><output id="decayLabel">0.65 s</output></label><label>View <select id="module"><option value="all">All modules</option></select></label><label>Render <select id="targetFps"><option>15</option><option selected>30</option><option>60</option></select> fps</label><button id="pause">Pause view</button><button id="reset">Reset zoom</button><button id="full">Fullscreen</button></nav>
 <div id="notice" role="status">Loading geometry and waiting for the collector.</div>
 <main id="modules" class="modules"></main>
 <footer><div><span class="dot"></span> Brightness shows hit age on the selected playback clock, not charge. Scroll to zoom · drag to pan · hover for pixel identity.</div><div>Read-only observer · transport loss is not measurable from this stream · no trigger-based reconstruction yet.</div><div id="errors">No status yet.</div></footer>
 <div id="tooltip" hidden></div>
 <script src="/static/trigger_view.js?v=detector-wide-2d-1"></script>
-<script src="/static/display.js?v=detector-wide-2d-1"></script>
+<script src="/static/playback_clock.js?v=pps-playhead-1"></script>
+<script src="/static/display.js?v=pps-playhead-1"></script>
 </body></html>

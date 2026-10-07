@@ -158,7 +158,7 @@ function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUin
 function connect(){
   const scheme=location.protocol==='https:'?'wss:':'ws:';
   socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1&trigger_windows=1&trigger_sources=1`);socket.binaryType='arraybuffer';
-  socket.onopen=()=>{window.rawTriggerUI?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
+  socket.onopen=()=>{window.rawPlaybackClock?.reset();window.rawTriggerUI?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
   socket.onmessage=event=>{
     try{
       if(typeof event.data==='string'){receiveSync83(JSON.parse(event.data));return;}
@@ -190,17 +190,19 @@ function connect(){
       }else throw new Error('Unsupported display frame');
       if(viewAudit.frames)viewAudit.maxFrameGapMs=Math.max(viewAudit.maxFrameGapMs,now-lastFrameAt);
       viewAudit.frames++;
-      lastFrameAt=now;socket.send(String(seq));
+      lastFrameAt=now;window.rawPlaybackClock?.frame(now);socket.send(String(seq));
     }catch(err){$('notice').textContent=err.message;socket.close();}
   };
-  socket.onclose=e=>{window.rawTriggerUI?.disconnect();syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
+  socket.onclose=e=>{window.rawPlaybackClock?.disconnect();window.rawTriggerUI?.disconnect();syncLinkUp=false;viewAudit.closes++;if(e.code===4009){location.reload();return;}$('connection').textContent='Disconnected · retrying';if(!asicTime())seen.fill(0);clearTimeout(retry);retry=setTimeout(connect,1500);};
   socket.onerror=()=>socket.close();
 }
 async function updateStatus(){
+  const clockToken=window.rawPlaybackClock?.token(),clockRequestAt=performance.now();
   try{
     const res=await fetch('/api/status',{cache:'no-store'});if(!res.ok)throw new Error('Status unavailable');
     status=await res.json();const now=performance.now(),dt=(now-oldStatusAt)/1000;
     window.rawTriggerUI?.receiveStatus(status,now);
+    window.rawPlaybackClock?.receiveStatus(status,now,clockToken,now-clockRequestAt);
     let total=0,receiving=0,bad=0,unknown=0,malformed=0;
     for(const s of status.sources){
       const before=oldStatus?.sources.find(p=>p.iog===s.iog);
@@ -231,7 +233,7 @@ async function updateStatus(){
     if(unknown>0)notice+='  Some accepted hits are absent from the selected geometry.';
     $('notice').textContent=notice;$('notice').className=(!status.collector_healthy||malformed||unknown)?'warning':'';
     oldStatus=status;oldStatusAt=now;
-  }catch(err){viewAudit.statusErrors++;status=null;$('notice').textContent='Status unavailable — do not interpret the view as live.';$('notice').className='warning';}
+  }catch(err){window.rawPlaybackClock?.statusFailed(clockToken);viewAudit.statusErrors++;status=null;$('notice').textContent='Status unavailable — do not interpret the view as live.';$('notice').className='warning';}
 }
 async function main(){
   const response=await fetch('/api/geometry');if(!response.ok)throw new Error('Geometry metadata unavailable');
@@ -239,6 +241,7 @@ async function main(){
   if(b.byteLength!==meta.n_pixels*8||meta.record_bytes!==8)throw new Error('Geometry version/length mismatch');
   pixels=new DataView(b);seen=new Float64Array(meta.n_pixels);if(asicTime())seen.fill(-1);
   window.rawTriggerUI?.configure(meta);
+  window.rawPlaybackClock?.configure(meta);
   $('mode').textContent=meta.mode;$('mode').classList.toggle('demo',meta.mode==='DEMO');$('pixels').textContent=fmt(meta.n_pixels);
   for(const m of [...new Set(meta.tiles.map(t=>t.module))]){
     const box=document.createElement('section');box.className='module';
@@ -248,7 +251,7 @@ async function main(){
     for(const iog of meta.iogs.filter(i=>Math.floor((i-1)/2)===m))planes.push(new Plane(iog,box.querySelector('.planes')));
   }
   $('module').onchange=()=>{for(const [m,box]of modules)box.hidden=$('module').value!=='all'&&String(m)!==$('module').value;$('modules').classList.toggle('focus',$('module').value!=='all');};
-  $('pause').onclick=()=>{paused=!paused;window.rawTriggerUI?.setPaused(paused);if(paused){pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}$('pause').textContent=paused?'Resume live':'Pause view';};
+  $('pause').onclick=()=>{paused=!paused;window.rawTriggerUI?.setPaused(paused);if(paused){pausedSeen=seen.slice();pauseTime=performance.now();pauseClocks=clocks.map((c,i)=>displayTime(i,pauseTime));}window.rawPlaybackClock?.setPaused(paused,pauseClocks,clocks.map(c=>c.running),pauseTime);$('pause').textContent=paused?'Resume live':'Pause view';};
   $('reset').onclick=()=>planes.forEach(p=>p.reset());
   $('full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});};
   $('decay').oninput=()=>{$('decayLabel').textContent=`${Number($('decay').value).toFixed(2)} s`;};
@@ -265,6 +268,7 @@ async function main(){
     $('modules').classList.toggle('offline',!fresh);
     $('connection').textContent=fresh?(paused?'View paused · ingest continues':'Receiving snapshots'):'Stream stale / waiting';
     for(const plane of planes){const t=paused?(asicTime()?pauseClocks[plane.iog]:pauseTime):displayTime(plane.iog,now);plane.draw(t,paused?pausedSeen:seen,brightness);}
+    window.rawPlaybackClock?.render(paused?pauseClocks:clocks.map((c,i)=>displayTime(i,now)),clocks.map(c=>c.running),now);
     nframes++;if(now-fpsStart>1000){$('fps').textContent=(nframes*1000/(now-fpsStart)).toFixed(0);nframes=0;fpsStart=now;}
   }
   requestAnimationFrame(render);

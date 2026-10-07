@@ -1,7 +1,80 @@
 # 2×2 raw event display
 
-> **Unreleased detector-wide 2D candidate (`detector-wide-2d-1`), not v1.** See [current trigger behavior and live verification](docs/detector_wide_triggers.md) and [development test results](docs/detector_wide_verification.md). Beam = IOG5, Light = IOG6; windows propagate to qualified IOGs.
-> The sections below retain the v0.4.2 baseline descriptions. Their same-IOG-only trigger limits and old build identifiers are superseded by the candidate guide; normal timing and acquisition protections remain unchanged. No v1 tag is authorized by the software tests alone.
+## Current 2D implementation
+
+**Release status: unreleased 2D candidate; v1.0.0 requires operator acceptance.**
+
+Trigger build: `detector-wide-2d-1`. Clock feature: `pps-playhead-1`.
+The package/CLI remains `0.4.2` until the explicit release preparation step.
+These sections and the [detector-wide guide](docs/detector_wide_triggers.md)
+supersede the historical same-IOG-only/planned-feature descriptions below.
+
+T words on **IOG5 are Beam** and on **IOG6 are Light**. Their time windows are
+translated to every qualified target IOG. Numerical subtypes are diagnostic or
+optional filters, not source identities. The browser offers independent
+All / Highlight / Window-only and Beam / Light / Beam + Light controls. RX
+badges identify the physical source stream; they are not duplicated receipts.
+
+Each IOG retains its continuous local ASIC clock and independent buffered
+playhead. Two consistent PPS/header observations provisionally identify its
+whole-second epoch. Qualified offsets are pinned; suspect/stale epochs stop
+participating instead of shifting charge timestamps. A normal hit is selected
+for a trigger layer when its unrolled time falls in `[t0, t0+300 us)` by default.
+About two seconds of bounded charge history allow late triggers to recover
+previously received hits. This is temporal candidate selection, not proof of
+causality or a saved 3D event. **The 2D phosphor can contain several triggers and
+older fading hits; it is not one serialized event per screen frame.**
+
+### Displayed-time clock
+
+A clock above the controls labels the actual displayed playheads using the
+qualified PPS epochs. It shows **the oldest labelled pane**, the time spread
+across all configured panes, and an approximate lag range relative to the
+**daq03 server clock**, not browser time. Hover for per-IOG timestamps.
+Fermilab/Chicago is the default timezone; UTC is selectable. Date, milliseconds,
+and timezone are explicit. All configured panes count, even in a focused module
+view; an unqualified pane is named and excluded, never silently treated as live.
+
+Pause freezes the label and its **lag at pause**. Stale/disconnected streams or
+missing status make live time unavailable. Buffering panes are identified.
+A negative lag is shown as a clock-comparison warning, not clamped to zero.
+This is a **PPS/header-labelled estimate**, not a measurement of NTP lock. It
+inherits any stable message-packaging/PPS epoch bias. Millisecond formatting
+is not a millisecond absolute-accuracy claim. The clock does not time individual
+fading hits or supply a unique Beam/Light trigger timestamp.
+
+See [clock details and tests](docs/playback_clock.md) and the
+[version preparation, push and tag runbook](docs/v1_release.md).
+
+### Latest operator validation (reported 2026-10-06)
+
+Bruno ran the complete deployed checkout tests: **222 passed, 5 skipped**, before
+this clock addition. In a 119.99-second interval, IOG6 reported 162,148 mapped hits,
+zero pre-cut late hits, and 2,600 received T words. The router reported 2,587
+Light triggers to **each of all eight IOGs**. Bruno observed convincing yellow
+muon candidates across the system. The full diagnostic file was not provided;
+these are the pasted summary and visual report, not independently repeated tests.
+
+The verifier remained **false** because three invalid trigger timestamps were
+counted (the per-source and routing entries report the same issue, not six).
+No Beam triggers were observed in that interval. Receipt/routing counts come
+from separately published snapshots; their difference alone is not a loss
+measurement. The exact invalid-trigger reasons, real Beam-path check,
+independent PPS-cycle/phase validation, DAQ/PacMon stability and final clock
+acceptance remain to be recorded before the stable tag. The helper cannot
+authorize a release on its own.
+
+No special IOG6 phase/delay correction exists in the canonical candidate.
+The repaired fault remains closed; general 1.25-second buffering, late-hit ages
+and raw `<10` noise veto remain intact. The clock changes only presentation and
+small HTTP metadata. SUB topology, decoder, unroller, routing, trigger windows,
+geometry, hit selection and all existing binary WebSocket formats are unchanged.
+HTTP/WebSocket remain on `127.0.0.1`; operate one collector on daq03.
+
+## Historical v0.4.2 baseline documentation
+
+The material below preserves the design and operational history. For current
+trigger scope, clock behavior and release status, use the sections above.
 
 **A live, read-only charge-activity display for the ND-LAr 2×2 demonstrator.**
 

@@ -1,0 +1,8 @@
+.playback-clock{margin:0 22px 12px;padding:10px 14px;border:1px solid #294654;border-radius:7px;background:#0b1923;display:flex;gap:16px;align-items:center;justify-content:space-between;font-size:12px}
+.playback-clock .clock-label{font-size:10px;letter-spacing:.1em;color:#9ab3c4}
+.playback-clock strong{display:block;font-size:17px;font-variant-numeric:tabular-nums;margin:3px 0;color:#daeff2}
+.playback-clock small{display:block;color:#a9c0ce;line-height:1.5}
+.playback-clock label{white-space:nowrap}
+.playback-clock[data-state="stale"],.playback-clock[data-state="warning"],.playback-clock[data-state="partial"],.playback-clock[data-state="buffering"]{border-color:#d9a44d}
+.playback-clock[data-state="paused"] strong{color:#f0ce81}
+@media(max-width:700px){.playback-clock{margin:0 10px 10px;align-items:flex-start;flex-direction:column;gap:8px}.playback-clock strong{font-size:14px}}

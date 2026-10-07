@@ -74,7 +74,7 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
     def metadata():
         return {**geometry.metadata, 'mode': 'LIVE', 'protocol': 2,
                 'time_basis': 'asic', 'timing_config': asdict(config),
-                'feature_build': FEATURE_BUILD,
+                'feature_build': FEATURE_BUILD, 'playback_clock': 'pps-playhead-1',
                 'trigger_source_protocol': 1,
                 'trigger_sources': {name: i for i, name in TRIGGER_SOURCES.items()},
                 'trigger_view_enabled': bool(getattr(shared, 'trigger_seen', None) is not None),
@@ -106,10 +106,12 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
         age = max(0., now-hub['heartbeat']) if hub['heartbeat'] else None
         observers = read_observers(shared)
         captured = observers.get('captured_monotonic')
-        alignment = dict(common_timing=observers.get('common_timing'),
+        alignment = dict(session_id=observers.get('session_id'),
+                         common_timing=observers.get('common_timing'),
                          capture_age_s=None if captured is None else max(0., now-captured))
         return dict(mode='LIVE', time_basis='unrolled ASIC time (IOG-relative)',
                     collector_alive=proc.is_alive(), trigger_alignment=alignment,
+                    server_unix_s=time.time(),  # approximate wall-clock comparison only; never a hit time
                     collector_healthy=bool(proc.is_alive() and age is not None and age < 3),
                     collector_age_s=age, collector_cpu_fraction=float(hub['cpu']), sources=sources,
                     clients=hub['clients'], transport_loss='not measurable from this stream',

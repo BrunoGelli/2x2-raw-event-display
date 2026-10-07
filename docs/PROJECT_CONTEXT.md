@@ -1,7 +1,112 @@
 # 2×2 raw event display — project handoff and conversation context
 
-> **Continuation update: unreleased detector-wide 2D candidate (`detector-wide-2d-1`).** [Current behavior and v1 verification gate](detector_wide_triggers.md) and [executed checks](detector_wide_verification.md) take precedence over the historical same-IOG-only/planned Beam-Light passages below.
-> IOG5 Beam and IOG6 Light now propagate to qualified target epochs, with browser-local source selection. Header-labelled epochs remain provisional; live validation and the complete deployed test suite are still required. The IOG6 hardware repair remains resolved; no special IOG6 correction is retained or added. No 3D feature or v1 tag is included.
+## Continuation snapshot — 2026-10-06, after detector-wide live check
+
+**State at this handoff:** detector-wide 2D is deployed by Bruno and visually
+working; a small clock extension is prepared but still needs his installation
+and acceptance. No stable v1 tag was created by this change. The next major
+feature is 3D, after the 2D release gate. Do not confuse this project with the
+NERSC `2x2-live-event-display` repository.
+
+The following supersedes historical same-IOG-only and planned Beam/Light text.
+The candidate trigger identifier remains `detector-wide-2d-1`; the new clock has
+its own `/api/geometry.playback_clock = "pps-playhead-1"` marker. CLI version
+`0.4.2` before release is intentional, not evidence that the patch failed.
+
+### Implemented semantics
+
+* Source routing is **IOG5 = Beam, IOG6 = Light**, per Bruno. Valid T words are
+  propagated to all qualified IOGs after integer whole-PPS epoch translation.
+  S83 and S72 are never triggers. Subtype remains diagnostic/filter metadata.
+* Common timing uses `offset_i = header_second * R - local_sync_tick_i`, then
+  `trigger_j = trigger_i + offset_i - offset_j`. Two consistent, ordered PPS
+  observations qualify an epoch; pinned offsets are not silently changed.
+  Suspect/stale epochs stop association. No frequency/subsecond phase
+  calibration is performed. Header assembly time is not a latched PPS edge:
+  stable whole-second bias cannot be excluded by consistency alone.
+* Each IOG's existing normal unroller and independent 1.25-second-reserve
+  playback are unchanged. Trigger matching uses default `[t0,t0+300 us)` in
+  continuous ticks, including rollover, and shared bounded charge history for
+  late triggers. Beam and Light retain separate per-pixel last-hit times.
+* 2D rendering is a phosphor history, **not a unique event bunch per frame**.
+  Different IOG playheads need not be simultaneous on the monitor. 3D must keep
+  individual decoded/unrolled hits and trigger identity, not reconstruct from
+  the reduced per-pixel phosphor arrays.
+
+### New displayed-time clock
+
+The read-only clock labels the **actual displayed cursor**, not packet arrival,
+latest input frontier, trigger time, or browser wall time. It reports oldest
+labelled pane, per-pane spread, all-configured-IOG coverage and approximate lag
+against daq03 server wall time. Hover exposes each pane. Default Chicago and
+optional UTC include full date, timezone and milliseconds.
+
+The browser computes `epoch_seconds = last_header_second - last_sync_tick/R`
+from fresh qualified anchors, then `display_unix_ms = 1000*epoch_seconds +
+local_playhead_ms`. It deliberately ignores Unix-scale `offset_ticks` numbers
+above JavaScript's exact integer range. This is a display label only; matching
+stays in the existing Python integer-tick path. The time agrees with the
+playhead used by Canvas. Afterglow can contain older hits and multiple triggers.
+
+Pause captures/fixes the clock label and lag-at-pause, including through later
+reconnects. Live labels require fresh RDP2 frames and status, collector health,
+and qualified PPS metadata. Stale/disconnected/host/demo states never show a
+fabricated live detector time. Unlabelled/buffering IOGs and negative lag are
+visible. The existing status poll carries the new server wall timestamp and
+observer session identity; no polling loop or subscription is added. All binary
+protocols and collector algorithms remain unchanged.
+
+### Live evidence supplied by Bruno
+
+On `acd-daq03`, after installing the first detector-wide patch:
+
+- Complete checkout: **222 passed, 5 skipped, 9.75 seconds** (before clock patch).
+- Interval: 121 samples over 119.9884 s. IOG6: 162,148 mapped/display-selected
+  hits, zero pre-cut late hits, and 2,600 received triggers. IOG5: zero pre-cut
+  late hits and no received Beam triggers. Other groups had only small nonzero
+  pre-cut late fractions, maximum approximately 4.03e-5.
+- Each of IOGs1–8 received 2,587 routed Light triggers. Bruno saw yellow muon
+  candidates throughout the display. This is strong qualitative encouragement,
+  not a quantitative all-IOG phase/absolute-time calibration.
+- `software_checks_passed=false`, solely reported issue: three invalid trigger
+  times in both the source6 and aggregate routing counter views. These views
+  must not be added as six failures. No reason-level raw trigger samples were
+  supplied. Do not assume these were harmless boundary words or waive the flag.
+- 2,600 receipt versus 2,587 routed counts were from different publication
+  snapshots; the 13 difference is not itself measured trigger loss. Do not
+  assert that all of the difference was sampling skew either.
+
+Only the pasted diagnostic summary was supplied; `/tmp/detector-wide-live-check.json`
+was not attached. The IOG6 hardware repair remains resolved, with no special
+IOG6 timing correction to remove in this canonical candidate. General buffering,
+late-hit aging, and raw timestamp `<10` rejection are not PACMAN-specific hacks.
+
+### Release and deployment continuation
+
+Apply the clock patch **on top of** the installed detector-wide candidate, not
+bare GitHub main. At the start of this change, the GitHub branch listing still
+showed only `main` at `6508a73`; the live feature work had not been pushed there.
+Preserve/checkpoint any local changes before applying another patch. Do not
+force-push, hard-reset, or discard manually applied patches. Keep the canonical
+`/data/2x2-raw-event-display`, its `.venv`, and the existing one-collector launcher.
+
+Read [clock/test documentation](playback_clock.md) and
+[release/version/push instructions](v1_release.md). Push the development branch
+without declaring stable v1. The stable release requires recorded operational
+acceptance: resolve/classify the three rejected T timestamps; exercise real
+Beam and Light routing and source controls; verify PPS-cycle identity/relevant
+phase and clock label against an independent reference; verify normal
+DAQ/PacMon health; rerun complete tests after the clock change. Operator logs
+and acceptance must distinguish observed results from pending checks.
+
+Use **`v1.0.0`** for the first approved 2D tag, updating both `pyproject.toml`
+and `raw_display/__init__.py` first. Preserve the tag and start `feature/3d-events`
+from it. The new docs contain no claim that this tag has already been made.
+
+## Historical handoff (v0.4.2 baseline)
+
+The history below is retained verbatim; the continuation snapshot above takes
+precedence for implemented feature scope, post-repair evidence and release state.
 
 **Purpose:** preserve the decisions, implemented behavior, operational discoveries and remaining work from the development conversation so another developer or chat can continue without rebuilding the context.
 
