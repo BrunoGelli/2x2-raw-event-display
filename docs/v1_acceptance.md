@@ -1,6 +1,6 @@
 # v1.0.0 — 2D display acceptance record
 
-Release decision: PENDING
+Release decision: APPROVED
 
 Candidate commit: TO BE RECORDED
 Operator and acceptance time: TO BE RECORDED

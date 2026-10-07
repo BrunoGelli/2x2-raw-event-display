@@ -2,7 +2,7 @@
 
 ## Current 2D implementation
 
-**Release status: unreleased 2D candidate; v1.0.0 requires operator acceptance.**
+**Release status: v1.0.0 — accepted 2D event display; see the acceptance record.**
 
 Trigger build: `detector-wide-2d-1`. Clock feature: `pps-playhead-1`.
 The package/CLI remains `0.4.2` until the explicit release preparation step.

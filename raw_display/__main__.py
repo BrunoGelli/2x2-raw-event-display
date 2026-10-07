@@ -6,6 +6,7 @@ import platform
 import sys
 import time
 import numpy as np
+from . import __version__
 from .codec import make_message, decode_batch
 from .geometry import demo_geometry, load_geometry, download_geometry
 from .runtime import (DEFAULT_IO, DEFAULT_RUN_CONFIG, read_endpoints, read_asic_versions,
@@ -72,7 +73,8 @@ def benchmark(geometry, words=1024, messages=2000, batch_messages=256):
 
 def parser():
     p = argparse.ArgumentParser(description='2x2 read-only raw phosphor display')
-    p.add_argument('--version', action='version', version='raw-display 0.4.2')
+    #p.add_argument('--version', action='version', version='raw-display 0.4.2')
+    p.add_argument('--version', action='version', version=f'raw-display {__version__}')
     sub = p.add_subparsers(dest='command', required=True)
     for name in ('serve', 'probe', 'check'):
         s = sub.add_parser(name)
