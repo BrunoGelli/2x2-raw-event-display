@@ -1,5 +1,8 @@
 # 2×2 raw event display
 
+> **Unreleased detector-wide 2D candidate (`detector-wide-2d-1`), not v1.** See [current trigger behavior and live verification](docs/detector_wide_triggers.md) and [development test results](docs/detector_wide_verification.md). Beam = IOG5, Light = IOG6; windows propagate to qualified IOGs.
+> The sections below retain the v0.4.2 baseline descriptions. Their same-IOG-only trigger limits and old build identifiers are superseded by the candidate guide; normal timing and acquisition protections remain unchanged. No v1 tag is authorized by the software tests alone.
+
 **A live, read-only charge-activity display for the ND-LAr 2×2 demonstrator.**
 
 The backend on **acd-daq03** subscribes to PACMAN data streams, decodes packets in NumPy batches, maps electronics addresses onto the existing PacMon geometry, and serves a browser-based phosphor display. The browser runs on **ops01**; shifters use the existing VNC/approved forwarding workflow. Live visualization does not wait for files, Packetizer, Flow, or NERSC.

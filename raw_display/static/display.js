@@ -157,7 +157,7 @@ class Plane {
 function pixel(id){const at=id*8;return [pixels.getUint16(at,true),pixels.getUint16(at+2,true),pixels.getUint8(at+4),pixels.getUint8(at+5)];}
 function connect(){
   const scheme=location.protocol==='https:'?'wss:':'ws:';
-  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1&trigger_windows=1`);socket.binaryType='arraybuffer';
+  socket=new WebSocket(`${scheme}//${location.host}/ws?geometry=${meta.geometry_id}&sync83=1&trigger_windows=1&trigger_sources=1`);socket.binaryType='arraybuffer';
   socket.onopen=()=>{window.rawTriggerUI?.reset();syncLinkUp=true;syncMetaAt=-Infinity;for(let i=1;i<=8;i++)sync83State[i]={count:null,age:null,at:0,pulseUntil:0};viewAudit.connections++;seen.fill(asicTime()?-1:0);lastFrameAt=performance.now();$('connection').textContent='Stream connected';};
   socket.onmessage=event=>{
     try{
@@ -200,6 +200,7 @@ async function updateStatus(){
   try{
     const res=await fetch('/api/status',{cache:'no-store'});if(!res.ok)throw new Error('Status unavailable');
     status=await res.json();const now=performance.now(),dt=(now-oldStatusAt)/1000;
+    window.rawTriggerUI?.receiveStatus(status,now);
     let total=0,receiving=0,bad=0,unknown=0,malformed=0;
     for(const s of status.sources){
       const before=oldStatus?.sources.find(p=>p.iog===s.iog);
@@ -210,7 +211,7 @@ async function updateStatus(){
     }
     $('rate').textContent=fmt(total);$('sources').textContent=`${receiving} / ${meta.iogs.length}`;
     $('errors').textContent=`Since collector start: ${fmt(bad)} bad-parity hits excluded · ${fmt(unknown)} unmapped hits · ${fmt(malformed)} malformed messages.`;
-    let notice=meta.mode==='DEMO'?'DEMO — synthetic geometry and activity. No PACMAN connections.':(asicTime()?'ASIC TIME — buffered playback from unrolled chip timestamps · IOG-relative epochs, not absolute inter-IOG alignment.':'HOST TIME — arrival-time diagnostic view · no drift reconstruction.');
+    let notice=meta.mode==='DEMO'?'DEMO — synthetic geometry and activity. No PACMAN connections.':(asicTime()?'ASIC TIME — buffered playback from unrolled chip timestamps · IOG-local playback; trigger epoch qualification is shown separately.':'HOST TIME — arrival-time diagnostic view · no drift reconstruction.');
     if(asicTime()){
       const wait=status.sources.filter(s=>!s.timing?.synchronized).map(s=>s.iog);
       const buffering=status.sources.filter(s=>s.timing?.synchronized&&!s.timing?.running).map(s=>s.iog);

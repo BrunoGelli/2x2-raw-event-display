@@ -36,6 +36,9 @@ class Hits:
     # Optional references: no copy of the raw words; indices follow accepted hits.
     words: Optional[np.ndarray] = None
     word_indices: Optional[np.ndarray] = None
+    # One entry per nonempty DATA envelope, not per charge hit.
+    message_ends: Optional[np.ndarray] = None
+    message_seconds: Optional[np.ndarray] = None
 
 
 def odd_parity(payload):
@@ -45,11 +48,11 @@ def odd_parity(payload):
     return (p & np.uint64(1)) == 1
 
 
-def _empty(counters, diagnostic=None, words=None):
+def _empty(counters, diagnostic=None, words=None, ends=None, seconds=None):
     u8 = np.empty(0, dtype=np.uint8)
     u32 = np.empty(0, dtype=np.uint32)
     return Hits(u8, u8, u8, u8, u32, u32, counters, diagnostic,
-                words, np.empty(0, dtype=np.int64))
+                words, np.empty(0, dtype=np.int64), ends, seconds)
 
 
 def _legacy_header(message):
@@ -70,6 +73,7 @@ def _legacy_header(message):
 def decode_batch(messages, *, strict=False):
     counters = {name: 0 for name in DECODE_COUNTERS}
     bodies, first_error = [], None
+    ends, seconds = [], []
     for message in messages:
         try:
             kind, nwords = _legacy_header(message)
@@ -88,10 +92,14 @@ def decode_batch(messages, *, strict=False):
         counters['words'] += nwords
         if nwords:
             bodies.append(memoryview(message)[HEADER.size:])
+            ends.append(counters['words'])
+            seconds.append(HEADER.unpack_from(message)[1])
     if not bodies:
         return _empty(counters, first_error)
     body = bodies[0] if len(bodies) == 1 else b''.join(bodies)
     words = np.frombuffer(body, dtype=WORD)
+    ends = np.asarray(ends, dtype=np.int64)
+    seconds = np.asarray(seconds, dtype=np.int64)
     kinds = words['kind']
     counters['triggers'] = int(np.count_nonzero(kinds == ord('T')))
     counters['sync'] = int(np.count_nonzero(kinds == ord('S')))
@@ -101,7 +109,7 @@ def decode_batch(messages, *, strict=False):
     data = words[indices]
     counters['data_words'] = len(data)
     if not len(data):
-        return _empty(counters, first_error, words)
+        return _empty(counters, first_error, words, ends, seconds)
     ptype = (data['payload'] & np.uint64(3)).astype(np.uint8)
     for value in range(4):
         counters[f'packet_type_{value}'] = int(np.count_nonzero(ptype == value))
@@ -110,7 +118,7 @@ def decode_batch(messages, *, strict=False):
     counters['other_packets'] = len(mask) - counters['data_hits']
     data, indices = data[mask], indices[mask]
     if not len(data):
-        return _empty(counters, first_error, words)
+        return _empty(counters, first_error, words, ends, seconds)
     parity = odd_parity(data['payload'])
     downstream = ((data['payload'] >> np.uint64(62)) & np.uint64(1)) != 0
     counters['valid_data_hits'] = int(np.count_nonzero(parity))
@@ -123,7 +131,7 @@ def decode_batch(messages, *, strict=False):
                 ((p >> np.uint64(10)) & 63).astype(np.uint8),
                 ((p >> np.uint64(48)) & 255).astype(np.uint8),
                 ((p >> np.uint64(16)) & 0x7fffffff).astype(np.uint32),
-                data['receipt'], counters, first_error, words, indices)
+                data['receipt'], counters, first_error, words, indices, ends, seconds)
 
 
 def decode(message):

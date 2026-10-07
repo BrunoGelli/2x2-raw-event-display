@@ -97,7 +97,7 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
                 clock = clocks[iog]
                 initial = (clock.unroller.offset, clock.unroller.initial_tick is not None)
                 result = clock.ingest(ids, hits)
-                observers.record(iog, ids, hits, result, clock, initial)
+                observers.record(iog, ids, hits, result, clock, initial, now)
                 if audit is not None:
                     audit.record(iog, ids, len(frames), batch_messages,
                                  now - drain_at, time.monotonic() - now)
@@ -105,7 +105,7 @@ def collect_timed(geometry, endpoints, shared, config, hwm=4096, batch_messages=
             if now - published >= 0.1:
                 for iog, clock in clocks.items():
                     clock.step(now)
-                    observers.step(iog, clock.cursor)
+                    observers.step(iog, clock.cursor, now)
                     summary = clock.summary()
                     timing[iog] = [summary[key] for key in TIMING_FIELDS]
                 cpu = time.process_time()

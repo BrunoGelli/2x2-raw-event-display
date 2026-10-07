@@ -1,5 +1,8 @@
 # 2×2 raw event display — project handoff and conversation context
 
+> **Continuation update: unreleased detector-wide 2D candidate (`detector-wide-2d-1`).** [Current behavior and v1 verification gate](detector_wide_triggers.md) and [executed checks](detector_wide_verification.md) take precedence over the historical same-IOG-only/planned Beam-Light passages below.
+> IOG5 Beam and IOG6 Light now propagate to qualified target epochs, with browser-local source selection. Header-labelled epochs remain provisional; live validation and the complete deployed test suite are still required. The IOG6 hardware repair remains resolved; no special IOG6 correction is retained or added. No 3D feature or v1 tag is included.
+
 **Purpose:** preserve the decisions, implemented behavior, operational discoveries and remaining work from the development conversation so another developer or chat can continue without rebuilding the context.
 
 **Documentation prepared:** 2026-10-06. **Reviewed runtime baseline:** v0.4.2, GitHub `main` at `28a12e935eccda591373191373a90de5fd5ab818` before this documentation-only update. **Owner/operator:** Bruno Gelli. **Repository:** <https://github.com/BrunoGelli/2x2-raw-event-display>.

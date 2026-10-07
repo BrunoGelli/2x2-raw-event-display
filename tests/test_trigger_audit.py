@@ -211,7 +211,7 @@ def test_nonblocking_diagnostic_writer():
     o.publish_diagnostics(101.1);assert read_observers(shared)['skipped_diagnostic_publications']==1
 
 
-def test_iog_independence_and_no_extra_clocks():
+def test_unexpected_trigger_source_does_not_tag_any_iog():
     ctx=mp.get_context('spawn');shared=make_shared(ctx,8);cfg=ObserverConfig(trigger_view=True)
     attach_observers(ctx,shared,8,[1,2],cfg)
     o=Observers(8,[1,2],TimingConfig(),cfg,shared)
@@ -220,7 +220,8 @@ def test_iog_independence_and_no_extra_clocks():
         h,ids,initial,result=ingest(c,message(aux('S',83,R),aux('T',2,100),charge(200)) if iog==1 else message(aux('S',83,R),charge(200)))
         ids=ids+iog  # disjoint physical pixels
         o.record(iog,ids,h,result,c,initial);o.step(iog,1.01)
-    assert o.tagged[1]>0 and o.tagged[2]<0
+    assert np.all(o.tagged < 0)
+    assert o.router.stats['unexpected_source_triggers'] == 1
 
 
 class Alive:
@@ -256,7 +257,7 @@ def test_http_ws_trigger_frame_opt_in_and_old_protocol_retained(monkeypatch):
             assert magic==b'RDP2';ws.send_text(str(seq))
 
 
-def test_real_local_collector_integration(monkeypatch):
+def test_real_local_collector_unexpected_source_preserves_audit(monkeypatch):
     monkeypatch.setenv('RAW_DISPLAY_TRIGGER_VIEW','1');monkeypatch.setenv('RAW_DISPLAY_LATE_AUDIT_IOGS','1')
     geo=demo_geometry(iogs=[1],chips_per_tile=1)
     ctx=zmq.Context();pub=ctx.socket(zmq.XPUB);pub.setsockopt(zmq.RCVTIMEO,8000)
@@ -268,10 +269,11 @@ def test_real_local_collector_integration(monkeypatch):
         deadline=time.monotonic()+5
         while time.monotonic()<deadline:
             state,stats,beat,timing,cpu,tag=snapshot_with_triggers(shared,FIELDS,TIMING_FIELDS)
-            if np.any(tag>=0) and read_observers(shared).get('audits'):break
+            if stats[1,COL['mapped_hits']]==2 and read_observers(shared).get('audits'):break
             time.sleep(.05)
         assert proc.is_alive() and stats[1,COL['mapped_hits']]==2
-        assert np.max(tag)==pytest.approx(1.1001)
+        assert np.all(tag < 0)  # IOG 1 is not a configured Beam/Light source
+        assert read_observers(shared)['trigger_routing']['unexpected_source_triggers']==1
         assert read_observers(shared)['sources'][0]['trigger_subtypes']=={'2':1}
         assert read_observers(shared)['audits'][0]['totals']['selected_hits']==2
     finally:
