@@ -16,6 +16,7 @@ class ObserverConfig:
     trigger_view: bool = False
     pre_us: float = 0.0
     post_us: float = 190.0
+    beam_delay_us: float = 0.0  # signed IOG5 Beam t0 adjustment; positive = later
     history_seconds: float = 2.0
     max_history_hits: int = 500_000
     max_chunks: int = 4096
@@ -29,6 +30,8 @@ class ObserverConfig:
             raise ValueError('trigger pre-window must be 0..100000 microseconds')
         if not (math.isfinite(self.post_us) and 0 < self.post_us <= 100_000):
             raise ValueError('trigger post-window must be >0..100000 microseconds')
+        if not (math.isfinite(self.beam_delay_us) and -100_000 <= self.beam_delay_us <= 100_000):
+            raise ValueError('beam trigger delay must be finite and within +/-100000 microseconds')
         if not math.isfinite(self.history_seconds) or not .1 <= self.history_seconds <= 10:
             raise ValueError('trigger history must be 0.1..10 seconds')
         if not 1 <= self.max_history_hits <= 2_000_000 or not 1 <= self.max_chunks <= 8192:
@@ -54,6 +57,7 @@ class ObserverConfig:
         return cls(trigger_view=enabled == '1' or view3d == '1', view3d=view3d == '1',
                    pre_us=float(os.environ.get('RAW_DISPLAY_TRIGGER_PRE_US', '0')),
                    post_us=float(os.environ.get('RAW_DISPLAY_TRIGGER_POST_US', '190')),
+                   beam_delay_us=float(os.environ.get('RAW_DISPLAY_BEAM_DELAY_US', '0')),
                    history_seconds=float(os.environ.get('RAW_DISPLAY_TRIGGER_HISTORY_S', '2')),
                    max_history_hits=int(os.environ.get('RAW_DISPLAY_TRIGGER_MAX_HITS', '500000')),
                    trigger_types=integers('RAW_DISPLAY_TRIGGER_TYPES'),

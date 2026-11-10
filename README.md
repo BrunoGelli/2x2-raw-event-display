@@ -7,7 +7,12 @@
 this development package is `1.1.0.dev0`.
 
 The normal Beam/Light window is now **`[t0, t0 + 190 us)`**, including 2D.
-`RAW_DISPLAY_TRIGGER_POST_US` remains an override. Set **`RAW_DISPLAY_3D=1`**
+`RAW_DISPLAY_TRIGGER_POST_US` remains an override. For an early IOG5
+extraction/Beam trigger, `RAW_DISPLAY_BEAM_DELAY_US=220` shifts *only* Beam `t0`
+by +220 us (default 0). With `RAW_DISPLAY_TRIGGER_POST_US=190`, this selects
+`[raw_T + 220 us, raw_T + 410 us)` for both 2D and 3D; do not keep a 420 us
+post-window when using 3D. Light, PPS, raw T receipt and charge stay unchanged.
+Set **`RAW_DISPLAY_3D=1`**
 on the existing ASIC-time instance and select **View → 3D detector** for the
 optional local Three.js view. This also enables trigger matching. Normal hits
 glow on physical anodes; highlighted candidates drift inward using the latest

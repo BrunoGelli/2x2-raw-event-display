@@ -143,6 +143,8 @@ class Observers:
                        scope='detector-wide candidates on qualified PPS epochs',
                        **self.router.summary(now),
                        pre_us=self.config.pre_us, post_us=self.config.post_us,
+                       beam_delay_us=self.config.beam_delay_us,
+                       beam_delay_ticks=self.router.beam_delay_ticks,
                        view3d_enabled=self.config.view3d,
                        trigger_association='latest qualifying preceding trigger per source' if self.config.view3d else 'merged candidate windows',
                        history_seconds=self.config.history_seconds,
