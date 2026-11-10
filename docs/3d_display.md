@@ -21,9 +21,24 @@ The default 2D/3D candidate window is now `[t0,t0+190 us)`; the existing
 
 The existing Beam / Light / Beam + Light selector applies independently.
 IOG5 supplies Beam t0; IOG6 supplies Light t0; eligible triggers propagate over
-the existing qualified PPS epochs. Beam points are **Beam-referenced drift
-candidates**: spill timing can differ from ionization time. No extra Beam or
-IOG6 offset is applied.
+the existing qualified PPS epochs. If the extraction T word on IOG5 arrives
+before the spill, set `RAW_DISPLAY_BEAM_DELAY_US` (default `0`) to the signed
+Beam-only offset in microseconds; positive values move Beam `t0` later. The
+correction occurs after common-PPS epoch translation and before both 2D
+association and 3D `dt_ticks` calculation. It does not shift charge, Light,
+SYNC/PPS, receipt badges or playback. Beam points remain **Beam-referenced
+drift candidates**: the corrected spill time is not necessarily the precise
+ionization time. No extra IOG6 offset is applied.
+
+For an AD extraction trigger about 220 us early, use
+`RAW_DISPLAY_BEAM_DELAY_US=220` with the normal
+`RAW_DISPLAY_TRIGGER_POST_US=190` (the maximum drift-selection window, not the
+absolute time since the raw extraction trigger). With the default zero
+pre-window, the accepted Beam hit interval is
+`[raw_beam_t0 + 220 us, raw_beam_t0 + 410 us)`. The old
+`RAW_DISPLAY_TRIGGER_POST_US=420` 2D hotfix selects nonphysical 3D drift times
+and should be removed when this correction is enabled. Restore beam delay `0`
+once the hardware timing is fixed.
 
 Drag to orbit, wheel to zoom, double-click or **Reset zoom** to reset the camera.
 Persistence and the displayed PPS-labelled clock are shared with 2D. Pause
@@ -238,6 +253,7 @@ Then restart that same instance with:
 ```bash
 cd /data/2x2-raw-event-display
 RAW_DISPLAY_TRIGGER_VIEW=1 RAW_DISPLAY_3D=1 \
+RAW_DISPLAY_BEAM_DELAY_US=220 RAW_DISPLAY_TRIGGER_POST_US=190 \
   .venv/bin/python -m raw_display serve --time-basis asic \
   --geometry-dir /data/2x2-raw-event-display/layout \
   --host 127.0.0.1 --port 8765
