@@ -169,6 +169,7 @@ class DetectorWindows:
 class DetectorTriggerRouter:
     def __init__(self, n_pixels, iogs, timing, config):
         self.config, self.timing = config, timing
+        self.beam_delay_ticks = int(round(config.beam_delay_us * 1e-6 / timing.tick_seconds))
         self.aligner = CommonPpsAligner(iogs, timing)
         self.states = {name: np.full(n_pixels, -1.) for name in SOURCE_NAMES} if config.trigger_view else {}
         self.drift_ticks = {name: np.full(n_pixels, -1, dtype=np.int64) for name in SOURCE_NAMES} if config.trigger_view and config.view3d else {}
@@ -247,7 +248,11 @@ class DetectorTriggerRouter:
                 continue
             # Offset DIFFERENCE is taken as an integer before NumPy addition.
             # Unix-scale ticks never pass through a float, preserving 100 ns ticks.
+            # Move only the Beam association t0, never raw T words, PPS or charge.
+            # Shift after epoch translation so rollover/cross-IOG math stays integral.
             local = triggers + (source_offset-target_offset)
+            if source == 'beam':
+                local = local + self.beam_delay_ticks
             good = local >= 0
             self.targets[target]['invalid_projected_ticks'] += int(np.count_nonzero(~good))
             self.targets[target]['routed_'+source] += int(np.count_nonzero(good))
