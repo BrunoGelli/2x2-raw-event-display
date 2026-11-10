@@ -88,6 +88,7 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
                 'trigger_scope': 'detector-wide candidates on qualified PPS epochs',
                 'trigger_pre_us': getattr(getattr(shared, 'observer_config', None), 'pre_us', 0.),
                 'trigger_post_us': getattr(getattr(shared, 'observer_config', None), 'post_us', 190.),
+                'beam_delay_us': getattr(getattr(shared, 'observer_config', None), 'beam_delay_us', 0.),
                 'view3d_enabled': enabled3d, 'view3d_error': geometry3d_error,
                 'view3d_build': '3d-candidates-1' if enabled3d else None,
                 'geometry3d': geometry3d.metadata if enabled3d else None,
