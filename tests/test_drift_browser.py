@@ -90,7 +90,9 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         assert page.evaluate("document.body.classList.contains('kiosk-active')")
         assert page.locator('header').is_hidden()
         stage = page.locator('#detector3d-canvas').bounding_box()
-        assert stage['width'] >= 1400 and stage['height'] >= 1100
+        viewport = page.evaluate("({width:innerWidth,height:innerHeight})")
+        assert abs(stage['width']-viewport['width']) < 2
+        assert abs(stage['height']-viewport['height']) < 2
         page.evaluate("document.getElementById('kiosk-exit').click()")
         assert not page.evaluate("document.body.classList.contains('kiosk-active')")
         page.click('#spin-toggle')
