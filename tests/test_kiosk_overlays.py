@@ -9,6 +9,7 @@ def test_official_logo_is_bundled_and_transparent_format():
     logo = STATIC / '2x2-official-logo.webp'
     data = logo.read_bytes()
     assert data[:4] == b'RIFF' and data[8:12] == b'WEBP'
+    assert data[12:16] == b'VP8X' and data[20] & 0x10  # Alpha channel preserved
     assert len(data) > 1000
     html = (STATIC / 'index.html').read_text()
     assert 'id="kiosk-logo"' in html
