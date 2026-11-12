@@ -82,6 +82,22 @@ def test_real_canvas_page_source_controls_and_protocol(tmp_path):
             page.wait_for_function('window.rawDisplayDiagnostics?.().frames >= 2')
             page.wait_for_function("document.getElementById('trigger-scope').textContent.includes('8/8 PPS')")
             assert page.locator('.plane').count() == 8
+            # Fullscreen dashboard projection and theme must preserve the same live socket.
+            page.click('#theme-toggle')
+            assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+            page.wait_for_timeout(100)
+            blank = page.evaluate("""() => {const t=planes[0].tiles[0],at=t.offsets[2];
+                return Array.from(t.data.data.slice(at,at+3));}""")
+            assert blank == [244,248,251]
+            page.click('#kiosk-enter')
+            assert page.locator('.metrics').is_hidden()
+            stage = page.locator('#modules').bounding_box()
+            viewport = page.evaluate("({width:innerWidth,height:innerHeight})")
+            assert abs(stage['width']-viewport['width']) < 2
+            assert abs(stage['height']-viewport['height']) < 2
+            page.evaluate("document.getElementById('kiosk-exit').click()")
+            page.click('#theme-toggle')
+            assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
             page.select_option('#trigger-mode', 'only')
             for source, channel in [('beam', 0), ('light', 1), ('both', 0)]:
                 page.select_option('#trigger-source', source)
