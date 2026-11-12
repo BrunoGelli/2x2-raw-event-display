@@ -169,6 +169,6 @@ export async function createDetector3D(meta,rawPixels,holder){
     holder.classList.toggle('offline',!fresh);
     controls.update();renderer.render(scene,camera);diagnostics.draws++;
   }
-  return {render,reset,setTheme,setAutoRotate,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
+  return {render,reset,setTheme,setAutoRotate,autoRotateEnabled:()=>controls.autoRotate,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
     visibility:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.visible]))};
 }
