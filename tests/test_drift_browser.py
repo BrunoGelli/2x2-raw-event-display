@@ -96,13 +96,13 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         assert page.locator('#kiosk-logo').is_visible()
         overlays = page.evaluate("""() => ({
             clockBg: getComputedStyle(document.getElementById('playback-clock')).backgroundColor,
-            clockColor: getComputedStyle(document.getElementById('playback-clock-time')).color,
+            clockColor: getComputedStyle(document.querySelector('#playback-clock .clock-label')).color,
             toolbarBottom: document.getElementById('kiosk-toolbar').getBoundingClientRect().bottom,
             logoRight: document.getElementById('kiosk-logo').getBoundingClientRect().right
         })""")
         assert overlays['clockBg'] == 'rgba(0, 0, 0, 0)'
         assert overlays['clockColor'] == 'rgb(23, 48, 64)'  # light theme
-        assert overlays['toolbarBottom'] > 0
+        assert abs(overlays['toolbarBottom'] - page.evaluate('innerHeight') + 14) < 4
         stage = page.locator('#detector3d-canvas').bounding_box()
         viewport = page.evaluate("({width:innerWidth,height:innerHeight})")
         assert abs(stage['width']-viewport['width']) < 2
