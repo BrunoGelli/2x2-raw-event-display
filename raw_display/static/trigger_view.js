@@ -5,6 +5,7 @@
     paused:false,link:false,at:-Infinity,source:'both',sourceProtocol:false,
     layers:{},frozenLayers:null,routing:{},meta:null,statusAt:-Infinity,alignment:null,healthy:false,
     sources:Array.from({length:9},()=>({count:null,age:null,at:0,pulse:0}))};
+  const LIGHT_BASE=[244,248,251],LIGHT_ACTIVE=[143,95,0];
   const element=id=>typeof document!=='undefined'?document.getElementById(id):null;
   function reset(){
     state.tagged.fill(-1);for(const a of Object.values(state.layers))a.fill(-1);
@@ -145,7 +146,7 @@
     const v=brightness[index],level=v/255;
     if(state.lightTheme){
       // Dark amber on a pale background; in 'only' mode empty pixels stay pale.
-      const base=[244,248,251],active=[143,95,0];
+      const base=LIGHT_BASE,active=LIGHT_ACTIVE;
       if(state.mode==='only'){
         for(let k=0;k<3;k++)rgba[at+k]=Math.round(base[k]+(active[k]-base[k])*level);
       }else if(v){
