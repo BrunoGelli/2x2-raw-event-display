@@ -26,6 +26,7 @@ export async function createDetector3D(meta,rawPixels,holder){
   let failed=null;
   renderer.domElement.addEventListener('webglcontextlost',event=>{event.preventDefault();failed='WebGL context lost. Reload to retry 3D.';});
   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(43,1,1,20000);
+  const themeLines=[],themePlanes=[],themeLabels=[],themeArrows=[];
   const controls=new OrbitControls(camera,renderer.domElement);
   controls.enableDamping=true;controls.dampingFactor=.12;controls.minDistance=300;controls.maxDistance=6500;
   const target=new THREE.Vector3(0,0,0);
@@ -36,19 +37,23 @@ export async function createDetector3D(meta,rawPixels,holder){
   function outline(min,max,color,opacity){
     const size=new THREE.Vector3(...max).sub(new THREE.Vector3(...min));
     const geometry=new THREE.BoxGeometry(size.x,size.y,size.z);
-    const line=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),new THREE.LineBasicMaterial({color,transparent:true,opacity}));
+    const material=new THREE.LineBasicMaterial({color,transparent:true,opacity});
+    const line=new THREE.LineSegments(new THREE.EdgesGeometry(geometry),material);
+    themeLines.push({material,color,opacity});
     line.position.copy(new THREE.Vector3(...min).add(new THREE.Vector3(...max)).multiplyScalar(.5));scene.add(line);geometry.dispose();
   }
   function plane(x,min,max,color,opacity){
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(max[2]-min[2],max[1]-min[1]),
-      new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity,depthWrite:false}));
+    const material=new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity,depthWrite:false});
+    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(max[2]-min[2],max[1]-min[1]),material);
+    themePlanes.push({material,color,opacity});
     mesh.rotation.y=Math.PI/2;mesh.position.set(x,(min[1]+max[1])/2,(min[2]+max[2])/2);scene.add(mesh);
     outline([x,min[1],min[2]],[x,max[1],max[2]],color,.35);
   }
   function label(text,position,color='#bed0dc'){
     const c=document.createElement('canvas');c.width=256;c.height=64;
-    const ctx=c.getContext('2d');ctx.font='30px sans-serif';ctx.fillStyle=color;ctx.textAlign='center';ctx.fillText(text,128,42);
-    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));
+    const ctx=c.getContext('2d');ctx.font='30px sans-serif';ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.fillText(text,128,42);
+    const material=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),color:new THREE.Color(color),transparent:true,depthTest:false});
+    const sprite=new THREE.Sprite(material);themeLabels.push({material,color});
     sprite.position.copy(position);sprite.scale.set(260,65,1);scene.add(sprite);
   }
   for(const module of g.modules){
@@ -60,7 +65,8 @@ export async function createDetector3D(meta,rawPixels,holder){
   }
   const axisOrigin=new THREE.Vector3(bounds.min.x-160,bounds.min.y-30,bounds.min.z-160);
   for(const [axis,direction,color] of [['x · drift',[1,0,0],0xdd8d8d],['y · up',[0,1,0],0x89caa0],['z · beam',[0,0,1],0x81b0e6]]){
-    const dir=new THREE.Vector3(...direction);scene.add(new THREE.ArrowHelper(dir,axisOrigin,190,color,18,9));
+    const dir=new THREE.Vector3(...direction),arrow=new THREE.ArrowHelper(dir,axisOrigin,190,color,18,9);
+    scene.add(arrow);themeArrows.push({arrow,color});
     label(axis,axisOrigin.clone().addScaledVector(dir,240));
   }
   const uniforms={uTime:{value:new Float32Array(8)},uTau:{value:.65},uSize:{value:4*renderer.getPixelRatio()}};
@@ -85,6 +91,31 @@ export async function createDetector3D(meta,rawPixels,holder){
     return {points,positions,times,groups,lookup,geometry};
   }
   const clouds={normal:cloud(0x61f5be),beam:cloud(0xffe923),light:cloud(0xffe923)};
+  function setTheme(theme){
+    const light=theme==='light';
+    renderer.setClearColor(light?0xf4f8fb:0x07121a);
+    for(const {material,color,opacity} of themeLines){
+      material.color.set(light?0x567384:color);
+      material.opacity=light?Math.min(.45,opacity*1.6):opacity;
+    }
+    for(const {material,color,opacity} of themePlanes){
+      material.color.set(light?0x4a90a1:color);
+      material.opacity=light?Math.min(.12,opacity*2):opacity;
+    }
+    for(const {material,color} of themeLabels)material.color.set(light?0x304d5f:color);
+    const arrowColors=[0x99464d,0x297b4a,0x376ba6];
+    themeArrows.forEach(({arrow,color},i)=>arrow.setColor(light?arrowColors[i]:color));
+    for(const [name,c] of Object.entries(clouds)){
+      c.points.material.uniforms.uColor.value.set(light?(name==='normal'?0x087b57:0x956900):(name==='normal'?0x61f5be:0xffe923));
+      c.points.material.blending=light?THREE.NormalBlending:THREE.AdditiveBlending;
+      c.points.material.needsUpdate=true;
+    }
+  }
+  function setAutoRotate(enabled){
+    controls.autoRotate=!!enabled;
+    controls.autoRotateSpeed=0.9;
+  }
+  setTheme(document.documentElement.dataset.theme||'dark');
   let origin=new Float64Array(8).fill(NaN),normalVersion=null,pairVersion=null,lastSize='',pausedBefore=null,lastTau=null;
   const diagnostics={clampedCandidates:0,rejectedCandidates:0,draws:0,geometryPixels:n};
   function render({normal,clocks,normalRevision,paused,tau,mode,source,fresh}){
@@ -138,6 +169,6 @@ export async function createDetector3D(meta,rawPixels,holder){
     holder.classList.toggle('offline',!fresh);
     controls.update();renderer.render(scene,camera);diagnostics.draws++;
   }
-  return {render,reset,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
+  return {render,reset,setTheme,setAutoRotate,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
     visibility:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.visible]))};
 }
