@@ -52,7 +52,7 @@ git fetch origin
 git switch --track origin/feature/kiosk-auto-rotate-light-theme-20261112
 source .venv/bin/activate
 python -m pip install -e '.[test]'
-python -m pytest -q tests/test_kiosk_frontend.py tests/test_beam_delay.py
+python -m pytest -q tests/test_kiosk_overlays.py tests/test_kiosk_frontend.py tests/test_beam_delay.py
 ```
 
 If the local feature branch already exists, use
@@ -79,7 +79,7 @@ Without detector hardware:
 
 ```bash
 node tests/test_kiosk.js
-python -m pytest -q tests/test_kiosk_frontend.py
+python -m pytest -q tests/test_kiosk_overlays.py tests/test_kiosk_frontend.py
 ```
 
 The Node test covers view preservation, light/dark switching, 3D rotation
