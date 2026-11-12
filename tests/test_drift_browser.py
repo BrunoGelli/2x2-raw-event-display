@@ -81,6 +81,22 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         metrics['3d']=page.evaluate('({fps:document.getElementById("fps").textContent,...window.rawDisplayDiagnostics().view3d})')
         assert page.locator('#modules').is_hidden()
         assert page.locator('#detector3d').is_visible()
+        # Presentation controls must not affect the live display subscription.
+        page.click('#theme-toggle')
+        assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+        page.click('#spin-toggle')
+        assert page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
+        page.click('#kiosk-enter')
+        assert page.evaluate("document.body.classList.contains('kiosk-active')")
+        assert page.locator('header').is_hidden()
+        stage = page.locator('#detector3d-canvas').bounding_box()
+        assert stage['width'] >= 1400 and stage['height'] >= 1100
+        page.evaluate("document.getElementById('kiosk-exit').click()")
+        assert not page.evaluate("document.body.classList.contains('kiosk-active')")
+        page.click('#spin-toggle')
+        assert not page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
+        page.click('#theme-toggle')
+        assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
         ids=[e['id'] for e in expected]
         actual=np.array(page.evaluate("ids=>ids.map(id=>window.rawDisplay3D().position('light',id))",ids))
         target=np.array([[e[k] for k in ('x_mm','y_mm','z_mm')] for e in expected])
