@@ -117,6 +117,7 @@ export async function createDetector3D(meta,rawPixels,holder){
   }
   setTheme(document.documentElement.dataset.theme||'dark');
   let origin=new Float64Array(8).fill(NaN),normalVersion=null,pairVersion=null,lastSize='',pausedBefore=null,lastTau=null;
+  let lastControlUpdate=performance.now();
   const diagnostics={clampedCandidates:0,rejectedCandidates:0,draws:0,geometryPixels:n};
   function render({normal,clocks,normalRevision,paused,tau,mode,source,fresh}){
     if(failed)throw Error(failed);
@@ -167,7 +168,9 @@ export async function createDetector3D(meta,rawPixels,holder){
     clouds.beam.points.visible=mode!=='all'&&(source==='both'||source==='beam');
     clouds.light.points.visible=mode!=='all'&&(source==='both'||source==='light');
     holder.classList.toggle('offline',!fresh);
-    controls.update();renderer.render(scene,camera);diagnostics.draws++;
+    const wallNow=performance.now(),delta=Math.min(.1,Math.max(0,(wallNow-lastControlUpdate)/1000));
+    lastControlUpdate=wallNow;
+    controls.update(delta);renderer.render(scene,camera);diagnostics.draws++;
   }
   return {render,reset,setTheme,setAutoRotate,autoRotateEnabled:()=>controls.autoRotate,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
     visibility:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.visible]))};
