@@ -91,7 +91,7 @@
   });
   document.addEventListener('fullscreenchange', () => {
     // Esc is normally handled by the browser before the keydown reaches the page.
-    if (kiosk && !document.fullscreenElement && fullscreenOwned) exitKiosk();
+    if (kiosk && !document.fullscreenElement) exitKiosk();
   });
 
   window.rawKioskUI = {
