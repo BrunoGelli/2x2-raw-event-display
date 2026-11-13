@@ -67,7 +67,9 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
             elif name=='/':r.fulfill(path=str(root/'raw_display/static/index.html'),content_type='text/html')
             elif name.startswith('/static/'):
                 path=root/'raw_display'/name.lstrip('/')
-                r.fulfill(path=str(path),content_type='text/javascript' if path.suffix=='.js' else 'text/css')
+                r.fulfill(path=str(path),content_type={
+                    '.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp'
+                }.get(path.suffix, 'application/octet-stream'))
             else:r.abort()
         page.route('**/*',route);page.add_init_script(harness);page.goto('http://raw-display.test/')
         page.wait_for_function('window.rawDisplayDiagnostics?.().frames>=2')
@@ -81,6 +83,36 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         metrics['3d']=page.evaluate('({fps:document.getElementById("fps").textContent,...window.rawDisplayDiagnostics().view3d})')
         assert page.locator('#modules').is_hidden()
         assert page.locator('#detector3d').is_visible()
+        # Presentation controls must not affect the live display subscription.
+        page.click('#theme-toggle')
+        assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+        page.click('#spin-toggle')
+        assert page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
+        page.click('#kiosk-enter')
+        assert page.evaluate("document.body.classList.contains('kiosk-active')")
+        assert page.locator('header').is_hidden()
+        assert page.locator('#playback-clock').is_visible()
+        page.wait_for_function("document.getElementById('kiosk-logo').naturalWidth > 0")
+        assert page.locator('#kiosk-logo').is_visible()
+        overlays = page.evaluate("""() => ({
+            clockBg: getComputedStyle(document.getElementById('playback-clock')).backgroundColor,
+            clockColor: getComputedStyle(document.querySelector('#playback-clock .clock-label')).color,
+            toolbarBottom: document.getElementById('kiosk-toolbar').getBoundingClientRect().bottom,
+            logoRight: document.getElementById('kiosk-logo').getBoundingClientRect().right
+        })""")
+        assert overlays['clockBg'] == 'rgba(0, 0, 0, 0)'
+        assert overlays['clockColor'] == 'rgb(23, 48, 64)'  # light theme
+        assert abs(overlays['toolbarBottom'] - page.evaluate('innerHeight') + 14) < 4
+        stage = page.locator('#detector3d-canvas').bounding_box()
+        viewport = page.evaluate("({width:innerWidth,height:innerHeight})")
+        assert abs(stage['width']-viewport['width']) < 2
+        assert abs(stage['height']-viewport['height']) < 2
+        page.evaluate("document.getElementById('kiosk-exit').click()")
+        assert not page.evaluate("document.body.classList.contains('kiosk-active')")
+        page.click('#spin-toggle')
+        assert not page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
+        page.click('#theme-toggle')
+        assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
         ids=[e['id'] for e in expected]
         actual=np.array(page.evaluate("ids=>ids.map(id=>window.rawDisplay3D().position('light',id))",ids))
         target=np.array([[e[k] for k in ('x_mm','y_mm','z_mm')] for e in expected])

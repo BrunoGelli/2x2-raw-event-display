@@ -79,12 +79,18 @@ window.rawDisplayDiagnostics=()=>({...viewAudit,timeBasis:meta?.time_basis||'hos
 const fmt = n => n.toLocaleString(undefined,{maximumFractionDigits:1});
 const rateText = n => n >= 1000 ? `${(n/1000).toFixed(1)}k` : n.toFixed(0);
 const palette = new Uint8Array(256*3);
-for(let i=0;i<256;i++){
-  const t=i/255;
-  palette[3*i]=Math.round(4+93*t*t);
-  palette[3*i+1]=Math.round(13+232*t);
-  palette[3*i+2]=Math.round(20+170*t);
+let canvasLight = false;
+function setCanvasTheme(theme){
+  canvasLight=theme==='light';
+  for(let i=0;i<256;i++){
+    const t=i/255;
+    palette[3*i]=canvasLight?Math.round(244-229*t):Math.round(4+93*t*t);
+    palette[3*i+1]=canvasLight?Math.round(248-120*t):Math.round(13+232*t);
+    palette[3*i+2]=canvasLight?Math.round(251-158*t):Math.round(20+170*t);
+  }
 }
+window.rawCanvasTheme=setCanvasTheme;
+setCanvasTheme(document.documentElement.dataset.theme||'dark');
 
 class Plane {
   constructor(iog, holder) {
@@ -131,7 +137,7 @@ class Plane {
   draw(now, ages, brightness){
     if(this.canvas.getBoundingClientRect().width===0)return;
     const {s,ox,oy}=this.transform(),ctx=this.ctx;
-    ctx.fillStyle='#07121a';ctx.fillRect(0,0,this.canvas.width,this.canvas.height);ctx.imageSmoothingEnabled=false;
+    ctx.fillStyle=canvasLight?'#f4f8fb':'#07121a';ctx.fillRect(0,0,this.canvas.width,this.canvas.height);ctx.imageSmoothingEnabled=false;
     for(const t of this.tiles){
       const rgba=t.data.data;
       for(let id=t.start;id<t.start+t.count;id++){
@@ -143,8 +149,8 @@ class Plane {
       }
       t.ctx.putImageData(t.data,0,0);
       const x=ox+s*(t.x_min-t.pitch/2),y=oy-s*(t.y_min+(t.height-.5)*t.pitch),w=t.width*t.pitch*s,h=t.height*t.pitch*s;
-      ctx.drawImage(t.image,x,y,w,h);ctx.strokeStyle='#284352';ctx.lineWidth=.8;ctx.strokeRect(x,y,w,h);
-      if(w>28){ctx.fillStyle='#a4b9c8';ctx.font='9px system-ui';ctx.fillText(`T${t.tile}`,x+3,y+11);}
+      ctx.drawImage(t.image,x,y,w,h);ctx.strokeStyle=canvasLight?'#9db7c6':'#284352';ctx.lineWidth=.8;ctx.strokeRect(x,y,w,h);
+      if(w>28){ctx.fillStyle=canvasLight?'#35566a':'#a4b9c8';ctx.font='9px system-ui';ctx.fillText(`T${t.tile}`,x+3,y+11);}
     }
   }
   hover(e){
@@ -278,6 +284,7 @@ async function main(){
       if(window.rawDriftData.state.error)throw Error(window.rawDriftData.state.error);
       if(!loading3d)loading3d=import('/static/display3d.js?v=3d-candidates-1').then(m=>m.createDetector3D(meta,pixels,$('detector3d-canvas')));
       detector3d=await loading3d;
+      window.rawKioskUI?.on3DReady(detector3d);
       window.rawDriftData.state.wanted=$('module').value==='3d';
     }catch(error){fail3d(error);}
   };

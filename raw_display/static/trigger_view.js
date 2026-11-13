@@ -1,10 +1,11 @@
 /* Detector-wide ASIC-time window layers. Receipt badges are NOT event-time gates. */
 'use strict';
 (function(root){
-  const state={enabled:false,mode:'all',tagged:new Float64Array(0),frozen:null,
+  const state={enabled:false,mode:'all',lightTheme:false,tagged:new Float64Array(0),frozen:null,
     paused:false,link:false,at:-Infinity,source:'both',sourceProtocol:false,
     layers:{},frozenLayers:null,routing:{},meta:null,statusAt:-Infinity,alignment:null,healthy:false,
     sources:Array.from({length:9},()=>({count:null,age:null,at:0,pulse:0}))};
+  const LIGHT_BASE=[244,248,251],LIGHT_ACTIVE=[143,95,0];
   const element=id=>typeof document!=='undefined'?document.getElementById(id):null;
   function reset(){
     state.tagged.fill(-1);for(const a of Object.values(state.layers))a.fill(-1);
@@ -143,6 +144,20 @@
     // Future timestamps never become visible before the detector playhead.
     const index=t<0||t>now?brightness.length-1:Math.min(brightness.length-1,Math.floor((now-t)/16));
     const v=brightness[index],level=v/255;
+    if(state.lightTheme){
+      // Dark amber on a pale background; in 'only' mode empty pixels stay pale.
+      const base=LIGHT_BASE,active=LIGHT_ACTIVE;
+      if(state.mode==='only'){
+        for(let k=0;k<3;k++)rgba[at+k]=Math.round(base[k]+(active[k]-base[k])*level);
+      }else if(v){
+        const mix=Math.min(1,v/Math.max(1,normalBrightness));
+        for(let k=0;k<3;k++){
+          const target=base[k]+(active[k]-base[k])*level;
+          rgba[at+k]=Math.round(rgba[at+k]*(1-mix)+target*mix);
+        }
+      }
+      return;
+    }
     if(state.mode==='only'){
       rgba[at]=Math.round(4+251*level);rgba[at+1]=Math.round(13+220*level);rgba[at+2]=Math.round(20+15*level);
     }else if(v){
@@ -156,5 +171,6 @@
     return state.enabled&&t>=0&&t<=now?`\nLatest ${state.sourceProtocol?state.source+' detector-wide':'same-IOG'} trigger-window hit: ${((now-t)/1000).toFixed(3)} s old` : '';
   }
   root.rawTriggerUI={state,reset,configure,receiveMeta,receiveStatus,receiveFrame,renderBadges,setPaused,paint,hover,badge,hitTime,alignmentView,
+                     setTheme:mode=>{state.lightTheme=mode==='light';},
                      disconnect:()=>{state.link=false;}};
 })(typeof window!=='undefined'?window:globalThis);
