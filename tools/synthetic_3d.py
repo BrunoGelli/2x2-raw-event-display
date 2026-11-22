@@ -40,7 +40,12 @@ def build_fixture(geometry_dir='layout'):
         observers.record(iog,ids,hits,result,clock,initial,now)
     # Different local epoch origins but the same physical labelled PPS.
     for iog in range(1,9):
-        for second in range(unix-(iog%3),unix+2):feed(iog,second,aux('S',period))
+        for second in range(unix-(iog%3),unix+2):
+            feed(iog,second,aux('S',period))
+            for receipt in (period//4, 3*period//4):
+                word = bytearray(make_message(1, 11, 0, timestamp=0)[8:])
+                struct.pack_into('<I', word, 2, receipt)
+                feed(iog, second, word)
     t0_phase=100000
     feed(5,unix+1,aux('T',t0_phase));feed(6,unix+1,aux('T',t0_phase))
     expected=[]

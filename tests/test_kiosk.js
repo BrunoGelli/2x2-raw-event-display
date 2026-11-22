@@ -28,7 +28,7 @@ async function main() {
   ].map(key => [key, new FakeElement()]));
   const events = {}, html = new FakeElement(), body = new FakeElement();
   const document = {
-    body, documentElement: html, fullscreenElement: null,
+    body, events, documentElement: html, fullscreenElement: null,
     getElementById: key => elements[key],
     addEventListener(name, callback) { (this.events[name] ||= []).push(callback); },
     dispatch(name, event = {}) { for (const cb of events[name] || []) cb(event); }

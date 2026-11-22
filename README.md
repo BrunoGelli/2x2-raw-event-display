@@ -39,7 +39,7 @@ deployment-host checks; this branch has not been deployed by this work.
 
 **Release status: v1.0.0 — accepted 2D event display; see the acceptance record.**
 
-Trigger build: `detector-wide-2d-1`. Clock feature: `pps-playhead-1`.
+Trigger build: `receipt-pps-1`. Clock feature: `receipt-playhead-2`.
 The accepted 2D baseline is `v1.0.0`; earlier release notes below are historical.
 These sections and the [detector-wide guide](docs/detector_wide_triggers.md)
 supersede the historical same-IOG-only/planned-feature descriptions below.
@@ -51,9 +51,12 @@ All / Highlight / Window-only and Beam / Light / Beam + Light controls. RX
 badges identify the physical source stream; they are not duplicated receipts.
 
 Each IOG retains its continuous local ASIC clock and independent buffered
-playhead. Two consistent PPS/header observations provisionally identify its
-whole-second epoch. Qualified offsets are pinned; suspect/stale epochs stop
-participating instead of shifting charge timestamps. A normal hit is selected
+playhead. The live collector qualifies its whole-second epoch from parity-valid charge
+receipt times in two bands, 200–300 ms and 700–800 ms after PPS. Each band
+must agree across two distinct intervals. The clock and detector-wide trigger
+router use that same epoch. While a board warms up, its local charge and
+same-board trigger matches remain available. The per-IOG status and Run 70065
+replay are described in [detector-wide trigger timing](docs/detector_wide_triggers.md). A normal hit is selected
 for a trigger layer when its unrolled time falls in `[t0, t0+190 us)` by default.
 About two seconds of bounded charge history allow late triggers to recover
 previously received hits. This is temporal candidate selection, not proof of
@@ -73,8 +76,8 @@ view; an unqualified pane is named and excluded, never silently treated as live.
 Pause freezes the label and its **lag at pause**. Stale/disconnected streams or
 missing status make live time unavailable. Buffering panes are identified.
 A negative lag is shown as a clock-comparison warning, not clamped to zero.
-This is a **PPS/header-labelled estimate**, not a measurement of NTP lock. It
-inherits any stable message-packaging/PPS epoch bias. Millisecond formatting
+This **receipt-anchored PPS estimate** resolves the relative whole-second assignment.
+Absolute UTC and inter-board hardware phase require an independent reference. Millisecond formatting
 is not a millisecond absolute-accuracy claim. The clock does not time individual
 fading hits or supply a unique Beam/Light trigger timestamp.
 
@@ -258,7 +261,7 @@ curl -fsS http://127.0.0.1:8765/api/geometry |
 jq '{time_basis, feature_build, trigger_view_enabled, timing_config}'
 ```
 
-Expect `time_basis: "asic"` and `feature_build: "trigger-audit-1"`. `trigger_view_enabled` reflects the startup environment. A version number alone did not distinguish earlier v0.4.1 variants; inspect the serving API and imported paths when uncertain.
+Expect `time_basis: "asic"` and `feature_build: "receipt-pps-1"`. `trigger_view_enabled` reflects the startup environment. A version number alone did not distinguish earlier v0.4.1 variants; inspect the serving API and imported paths when uncertain.
 
 ## Architecture and high-rate ingestion
 

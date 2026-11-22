@@ -18,7 +18,7 @@ from raw_display.observer_runtime import (Observers, attach_observers, read_obse
     snapshot_with_triggers, encode_trigger_frame)
 from raw_display.timed_runtime import start_timed_collector
 from raw_display.timed_server import create_timed_app
-from test_detector_triggers import UNIX, R, message, aux, charge
+from test_detector_triggers import UNIX, R, message, aux, charge, receipt_frames
 
 
 class Alive:
@@ -149,6 +149,8 @@ def test_eight_real_local_subscriptions_and_both_source_layers(monkeypatch):
             assert pub.recv() == b'\x01'  # one subscriber, no extra probe
             for second in range(UNIX-i % 3, UNIX+2):
                 pub.send(message(second, aux()))
+                for envelope in receipt_frames(second):
+                    pub.send(envelope)
         deadline = time.monotonic()+3
         while time.monotonic() < deadline:
             info = read_observers(shared)
@@ -180,7 +182,7 @@ def test_eight_real_local_subscriptions_and_both_source_layers(monkeypatch):
                 pixel = geo.lut[i, 1, 11, channel]
                 expected = (i % 3+2)+phase/R
                 assert sources[name][pixel] == pytest.approx(expected)
-            assert data[1][i, COL['mapped_hits']] == 2
+            assert data[1][i, COL['mapped_hits']] == 2 + 2*(i % 3 + 2)
             assert pubs[i].poll(0) == 0  # no additional subscription from readers
         with TestClient(create_timed_app(geo, shared, proc)) as client:
             assert client.get('/healthz').status_code == 200

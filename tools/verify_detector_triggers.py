@@ -13,7 +13,7 @@ import time
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, ProxyHandler, build_opener
 
-FEATURE = 'detector-wide-2d-1'
+FEATURE = 'receipt-pps-1'
 MAX_RESPONSE = 1024*1024
 
 

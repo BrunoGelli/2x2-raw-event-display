@@ -3,7 +3,7 @@
 **Status: unreleased. No v1 tag or deployment approval.**
 
 Based on remote `main` at `6508a73d77f960a327874102be5091b585fb975f`
-(runtime v0.4.2, `28a12e9`). Feature identifier: **`detector-wide-2d-1`**.
+(runtime v0.4.2, `28a12e9`). The original 2D build used `detector-wide-2d-1`. The live receipt alignment build uses `receipt-pps-1`.
 The package version stays at the baseline until a release is approved. This
 candidate supersedes the same-IOG-only trigger descriptions in the historical
 README, PROJECT_CONTEXT and trigger_audit documents; it does not add 3D.
@@ -34,50 +34,63 @@ The *hit selection* propagates detector-wide, not the physical-receipt telemetry
 A global qualification note names unavailable targets. An empty plane is not an
 efficiency measurement: a trigger need not produce charge in every plane.
 
-## PPS labels: an important limit on the original proposal
+## Live PPS qualification
 
-The legacy envelope contains integer Unix seconds associated with **message
-assembly**. This field is not an independently measured timestamp of the S83
-edge. Even two consistent successive labels cannot exclude a stable one-second
-packaging/NTP bias on a board. Millisecond-scale OS clock errors near a second
-boundary can change the integer label. Therefore this implementation calls the
-result **provisional PPS epoch qualification**, not verified hardware alignment.
-The live release gate requires independent validation of that assumption.
+Each board counts valid SYNC-83 intervals in wire order. Its local tick origin
+can differ from its neighbors. The UNIX header labels PACMAN message assembly.
+The following observations associate a local interval with a whole UNIX second.
 
-For valid S83 words, with one reset period equal to one second:
+* Use complete DATA envelopes containing parity-valid type-0 receipt times.
+  Their full observed receipt range must fall in [200, 300) or [700, 800) ms
+  after a PPS. Ignore envelopes containing a reset. FIFO-delayed ASIC hit times,
+  trigger words, geometry selection and the post-SYNC display veto supply no votes.
+* Each band must cover two distinct local PPS intervals. Both must agree on
+  `epoch_second = header_second - local_interval`. At least one reset must be
+  labelled. Its header and subsequent reset labels can imply that origin or one
+  second earlier. Evidence takes effect after its envelope, in recorded order.
+* A contradiction, malformed reset, or stale PPS revokes the board. A fresh
+  labelled reset and new evidence in both bands can restore the original pinned
+  epoch. A collector restart begins a fresh timing session. Live routing waits
+  for receipt evidence even when all reset headers agree. Quiet boards and
+  historical free-running data with insufficient corroboration stay local.
 
-```python
-R = 10_000_000  # at the configured 100 ns tick
-source_epoch_offset = header_unix_second * R - local_sync_tick
-trigger_in_target_ticks = trigger_in_source_ticks + source_offset - target_offset
+For a cross-board trigger both source and target need fresh epochs. Translate
+in integer ticks with `target_t0 = source_t0 + (source_epoch - target_epoch) * R`.
+Then apply the configured beam-only delay and the existing drift window.
+Source and target on the same PACMAN already share a local hardware clock.
+Revocation clears pending windows, painted hits and drift pairs only for routes
+that used that board's epoch. Unmatched local charge history remains available.
+
+In `/api/status`, inspect `trigger_alignment.common_timing.sources` for each
+board's `status`, `method`, `epoch_second` and `receipt_intervals` (early, late,
+each capped at two). The kiosk clock uses the same qualified origin. Independent
+playheads can still have different playback lags. Absolute UTC and subsecond
+inter-board phase require a separate reference.
+
+### Run 70065 replay
+
+The 01:36:02 CST packet file from November 22, 2026 yielded a steady receipt
+epoch on all eight IOGs. Of 3,278 IOG 6 LRS words, 3,246 had valid local
+times. The replay compared 2,933 projected LRS triggers in the common board
+coverage, trimming four seconds at either end and excluding ±5 ms around PPS.
+Counts are mapped, display-selected hit–trigger pairs in half-open 190 µs windows.
+Overlapping windows can count the same hit twice. From the checkout with the
+validation dependencies installed, reproduce the table with:
+
+```sh
+python tools/replay_pps_coincidence.py packet-0070065-2026_11_22_01_36_02_CST.h5 --geometry-dir layout
 ```
 
-These operations use integers. Unix-scale ticks never pass through floating
-point or browser arithmetic. The browser still gets IOG-local detector seconds.
-This labels whole cycles; it does not measure/correct sub-second phase or clock
-frequency. Independent presentation playheads remain unchanged, so correlated
-hits are not guaranteed to flash at the same wall-clock instant on every plane.
-
-Qualification rules are identical for every IOG:
-
-* Two distinct, increasing, consistent S83 observations are required. Each S83
-  must have a valid canonical timestamp and an unambiguous nonzero header label.
-* The original qualified offset is pinned for the collector session. An
-  inconsistent label revokes eligibility; it never silently retimes charge or
-  adopts a replacement offset. Two observations of the original offset restore
-  eligibility. A persistent new offset requires investigation and a collector
-  restart, not an automatic correction.
-* No fresh valid PPS for 2.5 seconds revokes eligibility. Detector progress
-  beyond 2.5 reset periods without valid PPS also revokes it. Invalid selected
-  SYNCs and multiple selected PPS words in one envelope are rejected. Heartbeats
-  do not refresh qualification. Within-batch wire order is respected: a later
-  S83 cannot qualify an earlier T word.
-
-Revoking a previously qualified mapping clears pending/tagged associations and
-matching histories **globally**, once per transition, as a conservative measure.
-Normal charge playback is not cleared or retimed. Cumulative reset/discard
-counters remain visible. A constantly flapping board can consequently degrade
-trigger-view coverage; it is not hidden as successful alignment.
+| Target IOG | −1 s | Routed window | +1 s |
+|---|---:|---:|---:|
+| 1 | 1,095 | 14,136 | 1,269 |
+| 2 | 1,198 | 11,525 | 1,286 |
+| 3 | 716 | 14,737 | 904 |
+| 4 | 1,371 | 11,092 | 1,342 |
+| 5 | 12,318 | 31,374 | 12,656 |
+| 6 | 2,086 | 22,456 | 1,908 |
+| 7 | 5,939 | 21,493 | 5,463 |
+| 8 | 2,350 | 12,014 | 2,254 |
 
 ## IOG6 repair and unchanged protections
 
