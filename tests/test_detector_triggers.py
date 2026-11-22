@@ -27,6 +27,11 @@ def message(second, *words, kind=b'D'):
     return HEADER.pack(kind, second, len(words))+b''.join(words)
 
 
+def receipt_frames(second):
+    # Use a vetoed ASIC timestamp so the anchor never paints a test pixel.
+    return (message(second, charge(0, R//4)), message(second, charge(0, 3*R//4)))
+
+
 class Driver:
     def __init__(self, iogs=range(1, 9), **kwargs):
         self.iogs = list(iogs)
@@ -52,7 +57,7 @@ class Driver:
         # All boards reach the same physical PPS (UNIX+1), from different starts.
         for i in self.iogs:
             for second in range(self.origins[i], UNIX+2):
-                self.feed(i, message(second, aux()))
+                self.feed(i, message(second, aux()), *receipt_frames(second))
         assert all(s.status == 'aligned' for s in self.router.aligner.states.values())
         return self
 
@@ -190,25 +195,38 @@ def test_trigger_only_and_sync_only_batches_retain_header_metadata():
         assert h.message_seconds.tolist() == [UNIX]
 
 
-def test_two_distinct_observations_required_and_integer_precision():
-    a = CommonPpsAligner([1], TimingConfig())
-    a.observe(1, R, UNIX, 1.)
-    assert a.offset(1, 1.) is None
-    a.observe(1, 2*R, UNIX+1, 2.)
-    assert a.offset(1, 2.) == UNIX*R-R
-    assert isinstance(a.offset(1, 2.), int)
-    assert a.offset(1, 2.) > 2**53
+def test_receipt_bands_resolve_stable_early_and_alternating_reset_headers():
+    d = Driver(iogs=[1, 6], view3d=True)
+    for iog, labels in [(1, [0, 1, 2]), (6, [0, 2, 2])]:
+        for n, label in enumerate(labels):
+            d.feed(iog, message(UNIX+label, aux()), *receipt_frames(UNIX+n+1))
+        assert d.router.aligner.offset(iog, d.now) == UNIX*R
+    d.feed(1, message(UNIX+3, charge(125)))
+    d.feed(6, message(UNIX+3, aux('T', 2, 100)))
+    d.paint()
+    assert d.router.drift_ticks['light'][64] == 25
+    assert d.router.generation == 0
 
 
-def test_no_future_sync_qualifies_earlier_trigger_in_same_batch():
+def test_only_complete_interior_envelopes_qualify_and_never_backdate_a_trigger():
     d = Driver(iogs=[1, 5])
     for i in d.iogs:
-        d.feed(i, message(UNIX, aux()))
-    d.feed(1, message(UNIX+1, aux(), charge(200)))
-    d.feed(5, message(UNIX, aux('T', 2, R-10)),
-             message(UNIX+1, aux(), aux('T', 2, 100)))
+        for second in (UNIX, UNIX+1):
+            d.feed(i, message(second, aux()), message(second, charge(0, R//4)))
+            # A high-rate early band, a mixed envelope, a reset and one
+            # interior band sampled in one interval cannot qualify a board.
+            d.feed(i, *[message(second, charge(0, R//4))]*3,
+                   message(second, charge(0, R//4), charge(0, 3*R//4)))
+        assert d.router.aligner.offset(i, d.now) is None
+        d.feed(i, message(UNIX+1, charge(0, 3*R//4)))
+        d.feed(i, message(UNIX+2, aux(), charge(0, 3*R//4)))
+        assert d.router.aligner.offset(i, d.now) is None
+    d.feed(1, *receipt_frames(UNIX+2))
+    d.feed(5, message(UNIX+2, charge(0, 3*R//4), aux('T', 2, 100)),
+           message(UNIX+2, aux('T', 2, 200)))
     assert d.router.stats['source_unaligned_triggers'] == 1
     assert d.router.targets[1]['routed_beam'] == 1
+    assert d.router.targets[5]['routed_beam'] == 2
 
 
 def test_multiple_syncs_in_one_envelope_are_ambiguous_not_backfilled():
@@ -250,19 +268,18 @@ def test_inconsistent_header_revokes_mapping_and_never_silently_retimes():
     assert d.router.matchers[1].stats['association_resets'] == 1
 
 
-def test_original_offset_recovers_after_two_consistent_pps_labels():
-    a = CommonPpsAligner([1], TimingConfig())
-    a.observe(1, R, UNIX, 1.)
-    a.observe(1, 2*R, UNIX+1, 2.)
-    original = a.offset(1, 2.)
-    a.observe(1, 3*R, UNIX+3, 3.)
-    assert a.offset(1, 3.) is None
-    # Skip one physical second to avoid duplicated header; positive multi-period
-    # increments are supported by the canonical unroller and by this label check.
-    a.observe(1, 5*R, UNIX+4, 5.)
-    assert a.offset(1, 5.) is None
-    a.observe(1, 6*R, UNIX+5, 6.)
-    assert a.offset(1, 6.) == original
+def test_reset_labels_alone_cannot_restore_suspect_mapping():
+    d = Driver(iogs=[1]).ready()
+    a = d.router.aligner
+    original = a.offset(1, d.now)
+    # A contradictory DATA-only envelope revokes even without T/S words.
+    d.feed(1, message(UNIX+9, charge(0, R//4)))
+    for second in (UNIX+2, UNIX+3):
+        d.feed(1, message(second, aux()))
+    assert a.offset(1, d.now) is None
+    d.feed(1, *receipt_frames(UNIX+3))
+    d.feed(1, message(UNIX+4, aux()), *receipt_frames(UNIX+4))
+    assert a.offset(1, d.now) == original
 
 
 def test_stale_source_does_not_block_other_healthy_sources():
@@ -270,7 +287,8 @@ def test_stale_source_does_not_block_other_healthy_sources():
     d.now += 3.
     # IOG 6 is absent. Other streams requalify after freshness expires.
     for i in [1, 2, 3, 4, 5, 7, 8]:
-        d.feed(i, message(UNIX+2, aux()), message(UNIX+3, aux()))
+        d.feed(i, message(UNIX+2, aux()), *receipt_frames(UNIX+2),
+               message(UNIX+3, aux()), *receipt_frames(UNIX+3))
     d.feed(1, message(UNIX+3, charge(120)))
     d.feed(5, message(UNIX+3, aux('T', 2, 100)))
     d.paint()
@@ -375,3 +393,41 @@ def test_randomized_multi_iog_repeated_pixels_match_independent_oracle(seed):
     d.paint(R)
     for name in expected:
         np.testing.assert_allclose(d.router.states[name], expected[name], rtol=0, atol=1e-14)
+
+
+@pytest.mark.parametrize('revoked', [1, 6])
+def test_only_routes_using_revoked_epoch_are_cleared(revoked):
+    d = Driver(iogs=[1, 2, 5, 6], view3d=True).ready()
+    for i in d.iogs:
+        d.feed(i, message(UNIX+1, charge(150), charge(550, channel=1)))
+        d.router.step(i, d.tick(i, 300)/R, d.now)
+    for source in (5, 6):
+        d.feed(source, message(UNIX+1, aux('T', 2, 100)))
+    # One hit is painted, one is queued. Both layers and history tag bits
+    # must be invalidated selectively before the queue is advanced.
+    d.feed(revoked, message(UNIX+9, charge(0, R//4)))
+    assert d.router.aligner.offset(revoked, d.now) is None
+    d.paint()
+    for source, name in [(5, 'beam'), (6, 'light')]:
+        for target in d.iogs:
+            kept = source == target or revoked not in (source, target)
+            ids = slice(target*64, target*64+2)
+            assert (d.router.states[name][ids] >= 0).tolist() == [kept]*2
+            assert d.router.drift_ticks[name][ids].tolist() == ([50, 450] if kept else [-1, -1])
+            assert bool(d.router.matchers[target].windows[name]) == kept
+    # Same-board time remains sufficient even while that source lacks an epoch.
+    if revoked == 6:
+        d.feed(6, message(UNIX+1, aux('T', 2, 6000), charge(6015, channel=2)))
+        d.paint()
+        assert d.router.drift_ticks['light'][6*64+2] == 15
+
+
+def test_bad_parity_and_out_of_band_message_extents_cannot_qualify():
+    d = Driver(iogs=[1])
+    for second in (UNIX, UNIX+1, UNIX+2):
+        bad = bytearray(charge(0, 3*R//4))
+        bad[-1] ^= 0x80
+        d.feed(1, message(second, aux()), message(second, charge(0, R//4)),
+               message(second, bad), message(second, charge(0, 3*R//4), charge(0, R)))
+    assert d.router.aligner.offset(1, d.now) is None
+    assert d.router.summary(d.now)['common_timing']['sources'][0]['receipt_intervals'] == [2, 0]

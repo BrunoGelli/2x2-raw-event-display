@@ -45,13 +45,14 @@ def test_delayed_beam_crosses_pps_boundary_and_keeps_integer_drift_ticks():
     # exactly five ticks before the following PPS epoch.
     d.feed(5, message(UNIX+1, aux('T', 2, R-2205)))
     for iog in d.iogs:
-        d.feed(iog, message(UNIX+2, aux(), charge(4),
+        d.feed(iog, message(UNIX+2, aux(), charge(4, channel=3), charge(10),
                             charge(1894, channel=1), charge(1895, channel=2)))
     d.paint(12000)
     for iog in d.iogs:
         start = 64*iog
         assert (d.router.states['beam'][start:start+3] >= 0).tolist() == [True, True, False]
-        assert d.router.drift_ticks['beam'][start:start+3].tolist() == [9, 1899, -1]
+        assert d.router.drift_ticks['beam'][start:start+3].tolist() == [15, 1899, -1]
+        assert d.router.states['beam'][start+3] < 0  # raw tick 4 is PPS-vetoed
 
 
 def test_beam_delay_defaults_to_zero_and_env_override_is_read(monkeypatch):

@@ -49,10 +49,10 @@ def test_server_wall_time_is_metadata_only_not_assigned_to_hit_or_cursor():
 
 def test_clock_feature_marker_does_not_replace_trigger_protocol():
     ns,_,_=setup()
-    ns.update(FEATURE_BUILD='detector-wide-2d-1',TRIGGER_SOURCES={5:'beam',6:'light'},
+    ns.update(FEATURE_BUILD='receipt-pps-1',TRIGGER_SOURCES={5:'beam',6:'light'},
               asdict=lambda _:dict(tick_seconds=1e-7,rollover_ticks=10_000_000),frame_hz=10.)
     data=endpoint('metadata',ns)()
-    assert data['playback_clock']=='pps-playhead-1'
-    assert data['feature_build']=='detector-wide-2d-1'
+    assert data['playback_clock']=='receipt-playhead-2'
+    assert data['feature_build']=='receipt-pps-1'
     assert data['protocol']==2 and data['trigger_source_protocol']==1
     assert data['trigger_sources']=={'beam':5,'light':6}

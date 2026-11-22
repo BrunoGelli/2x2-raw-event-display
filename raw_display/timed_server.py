@@ -81,7 +81,7 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
     def metadata():
         return {**geometry.metadata, 'mode': mode, 'protocol': 2,
                 'time_basis': 'asic', 'timing_config': asdict(config),
-                'feature_build': FEATURE_BUILD, 'playback_clock': 'pps-playhead-1',
+                'feature_build': FEATURE_BUILD, 'playback_clock': 'receipt-playhead-2',
                 'trigger_source_protocol': 1,
                 'trigger_sources': {name: i for i, name in TRIGGER_SOURCES.items()},
                 'trigger_view_enabled': bool(getattr(shared, 'trigger_seen', None) is not None),
@@ -92,7 +92,7 @@ def create_timed_app(geometry, shared, proc, config=None, frame_hz=10., max_clie
                 'view3d_enabled': enabled3d, 'view3d_error': geometry3d_error,
                 'view3d_build': '3d-candidates-1' if enabled3d else None,
                 'geometry3d': geometry3d.metadata if enabled3d else None,
-                'timing_alignment': 'header-labelled PPS epochs; hardware phase and epoch labelling require live verification',
+                'timing_alignment': 'PPS epochs anchored by interior receipt phases; absolute hardware phase unverified',
                 'wire_format': 'legacy16 / Packet_v2 / batched', 'frame_hz': frame_hz}
 
     @app.get('/api/geometry.bin')

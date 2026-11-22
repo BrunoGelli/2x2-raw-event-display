@@ -75,7 +75,7 @@ def test_stale_or_suspect_alignment_clears_pairs_and_pending_matches():
     d.router.expire(d.now+3)
     assert all(np.all(a == -1) for a in d.router.drift_ticks.values())
     assert all(np.all(a == -1) for a in d.router.states.values())
-    assert all(not m.history and all(not layer.heap for layer in m.layers.values()) for m in d.router.matchers.values())
+    assert all(all(not layer.heap for layer in m.layers.values()) for m in d.router.matchers.values())
 
 
 def test_pre_window_does_not_create_negative_drift_and_optional_state_is_absent():

@@ -7,7 +7,7 @@ let now=1000;
 const elements={};
 const ctx={console,DataView,ArrayBuffer,Float64Array,Uint8Array,Uint32Array,Int32Array,Map,Set,
  performance:{now:()=>now},location:{protocol:'http:',host:'127.0.0.1:8765'},window:{},
- document:{getElementById:id=>elements[id]||(elements[id]={})},setTimeout:()=>0,clearTimeout:()=>{},
+ document:{documentElement:{dataset:{theme:'dark'}},getElementById:id=>elements[id]||(elements[id]={})},setTimeout:()=>0,clearTimeout:()=>{},
  WebSocket:class {constructor(url){ctx.ws=this;this.url=url;this.acks=[];}send(s){this.acks.push(s);}close(){this.closed=true;}}};
 vm.createContext(ctx);vm.runInContext(source,ctx);
 vm.runInContext("meta={time_basis:'asic',geometry_id:'test',iogs:[1,6]};seen=new Float64Array(3);seen.fill(-1);connect();",ctx);

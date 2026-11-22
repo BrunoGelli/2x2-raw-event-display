@@ -25,11 +25,11 @@ Given a fresh qualified PPS anchor for IOG i:
 
 ```text
 R = 10,000,000 ticks at 100 ns = one second
-E_i = last_header_second_i - last_local_sync_tick_i / R
+E_i = epoch_second_i  (qualified origin from /api/status)
 shown_unix_ms_i = 1000 * E_i + actual_local_playhead_ms_i
 ```
 
-`last_local_sync_tick_i` is an integral reset-period multiple. The frontend checks
+The backend supplies the integer `epoch_second` used for trigger routing. The frontend checks
 safe integer values and the one-second period. It does NOT use JSON
 `offset_ticks`, since Unix-scale 100 ns integers can exceed JavaScript's exact
 integer range. Matching remains in the pre-existing Python integer tick path;
@@ -57,9 +57,8 @@ precise transport-latency measurement. A long request is rejected for freshness.
 Negative lag remains visible as a clock-comparison warning instead of being
 clamped to zero. Check server/PACMAN clocks and epoch assumptions in that case.
 
-PPS labels originate from PACMAN message-assembly Unix seconds, NOT an
-electrically latched PPS epoch. The clock inherits the common-timing model's
-stable whole-second bias limitation. It does not query NTP, certify any host's
+Interior charge-receipt phases associate PACMAN message seconds with PPS intervals.
+Reset headers may repeat or skip across rollover without shifting the displayed clock. It does not query NTP, certify any host's
 NTP lock, or validate absolute/subsecond hardware phase. Millisecond formatting
 is display resolution, not a claim of absolute accuracy. Cross-check against
 an independent time reference during operational acceptance.

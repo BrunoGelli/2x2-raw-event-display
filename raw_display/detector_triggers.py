@@ -137,21 +137,21 @@ class DetectorWindows:
                 if hi >= lower and lo < upper:
                     self._tag(ids, old_ticks, bits, source)
 
-    def clear(self):
-        """Revoke old associations, not detector clocks. Counters remain cumulative."""
+    def clear_associations(self, sources, pixels):
+        """Forget only the revoked routes. Local hit times remain reusable."""
         self.stats['association_resets'] += 1
-        self.stats['reset_discarded_history_hits'] += self.n_history
-        self.history.clear()
-        self.n_history = 0
-        self.first_tick = None
-        for name, layer in self.layers.items():
+        for name in sources:
+            layer = self.layers[name]
             self.windows[name] = []
+            layer.state[pixels] = -1.
             if self.paired:
                 self.trigger_ticks[name] = np.empty(0, dtype=np.int64)
+                layer.drift_ticks[pixels] = -1
             self.stats['reset_discarded_pending_hits'] += layer.pending
             layer.heap.clear()
             layer.pending = 0
-        # The router owns the global arrays; it clears them once for all IOGs.
+            for _, _, bits, _, _ in self.history:
+                bits &= ~SOURCE_BITS[name]
 
     def step(self, cursor):
         for layer in self.layers.values():
@@ -175,6 +175,8 @@ class DetectorTriggerRouter:
         self.drift_ticks = {name: np.full(n_pixels, -1, dtype=np.int64) for name in SOURCE_NAMES} if config.trigger_view and config.view3d else {}
         self.matchers = {i: DetectorWindows(self.states, timing, config, self.drift_ticks or None) for i in iogs} if config.trigger_view else {}
         self.frontiers = {i: None for i in iogs}
+        self.pixel_iog = np.zeros(n_pixels, dtype=np.uint8) if config.trigger_view else None
+        self.generations = {i: 0 for i in iogs}
         self.generation = 0
         self.stats = dict(unexpected_source_triggers=0, invalid_trigger_times=0,
                           filtered_subtype_triggers=0, source_unaligned_triggers=0,
@@ -184,14 +186,19 @@ class DetectorTriggerRouter:
                         for i in iogs}
 
     def _clear_revoked(self):
-        if self.generation != self.aligner.generation:
-            for matcher in self.matchers.values():
-                matcher.clear()
-            for state in self.states.values():
-                state.fill(-1.)
-            for delta in self.drift_ticks.values():
-                delta.fill(-1)
-            self.generation = self.aligner.generation
+        if self.generation == self.aligner.generation:
+            return
+        changed = set()
+        for iog, state in self.aligner.states.items():
+            if self.generations[iog] != state.generation:
+                changed.add(iog)
+                self.generations[iog] = state.generation
+        for target, matcher in self.matchers.items():
+            affected = [name for source, name in TRIGGER_SOURCES.items()
+                        if source != target and (source in changed or target in changed)]
+            if affected:
+                matcher.clear_associations(affected, self.pixel_iog == target)
+        self.generation = self.aligner.generation
 
     def expire(self, now):
         self.aligner.expire(now)
@@ -212,7 +219,9 @@ class DetectorTriggerRouter:
         if iog not in self.matchers:
             return
         if frontier is not None:
-            self.matchers[iog].consume_hits(np.asarray(ids)[selected], ticks[selected], frontier)
+            pixel_ids = np.asarray(ids)[selected]
+            self.pixel_iog[pixel_ids] = iog
+            self.matchers[iog].consume_hits(pixel_ids, ticks[selected], frontier)
         if not hits.counters.get('triggers', 0):
             return
         types, trigger_ticks, valid = project_triggers(hits, initial, self.timing)
@@ -224,33 +233,36 @@ class DetectorTriggerRouter:
         self.stats['filtered_subtype_triggers'] += int(np.count_nonzero(~keep_type))
         self.stats['invalid_trigger_times'] += int(np.count_nonzero(keep_type & ~valid))
         selected_triggers = keep_type & valid
-        if self.aligner.generation != generation_before:
-            self.stats['uncertain_batch_triggers'] += int(np.count_nonzero(selected_triggers))
-            return
         source_offset = self.aligner.offset(iog, now)
         ready = np.array([offset is not None and offset == source_offset for offset in offsets], dtype=bool)
-        if source_offset is None:
+        if self.aligner.generation != generation_before:
+            self.stats['uncertain_batch_triggers'] += int(np.count_nonzero(selected_triggers))
             ready[:] = False
         self.stats['source_unaligned_triggers'] += int(np.count_nonzero(selected_triggers & ~ready))
-        triggers = trigger_ticks[selected_triggers & ready]
-        # Hard cap on downstream work from pathological trigger storms. Reception
-        # and counters still consume the full batch, without a waiting queue.
+        triggers = trigger_ticks[selected_triggers]
+        ready = ready[selected_triggers]
         if len(triggers) > self.config.max_windows:
             self.stats['trigger_batch_limit_drops'] += len(triggers)-self.config.max_windows
-            triggers = triggers[-self.config.max_windows:]
+            triggers, ready = triggers[-self.config.max_windows:], ready[-self.config.max_windows:]
         if not len(triggers):
             return
+        remote = triggers[ready]
         for target, matcher in self.matchers.items():
-            target_offset = self.aligner.offset(target, now)
             target_frontier = self.frontiers[target]
-            if target_offset is None or target_frontier is None:
-                self.targets[target]['unaligned_target_skips'] += len(triggers)
+            if target_frontier is None:
+                self.targets[target]['unaligned_target_skips'] += len(remote)
                 continue
-            # Offset DIFFERENCE is taken as an integer before NumPy addition.
-            # Unix-scale ticks never pass through a float, preserving 100 ns ticks.
-            # Move only the Beam association t0, never raw T words, PPS or charge.
-            # Shift after epoch translation so rollover/cross-IOG math stays integral.
-            local = triggers + (source_offset-target_offset)
+            if target == iog:
+                # A hit and trigger on one PACMAN already share a hardware clock.
+                local = triggers
+            else:
+                if not len(remote):
+                    continue
+                target_offset = self.aligner.offset(target, now)
+                if target_offset is None:
+                    self.targets[target]['unaligned_target_skips'] += len(remote)
+                    continue
+                local = remote + (source_offset - target_offset)
             if source == 'beam':
                 local = local + self.beam_delay_ticks
             good = local >= 0

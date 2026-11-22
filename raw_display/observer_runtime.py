@@ -140,7 +140,7 @@ class Observers:
             sources.append(dict(iog=i, trigger_source=TRIGGER_SOURCES.get(i), trigger_subtypes={str(k): int(counts[k]) for k in np.flatnonzero(counts)},
                                 invalid_trigger_times=self.bad_times[i], matching=summary))
         payload = dict(version=2, feature_build=FEATURE_BUILD, session_id=self.session_id, captured_monotonic=now, enabled=self.config.trigger_view,
-                       scope='detector-wide candidates on qualified PPS epochs',
+                       scope='same-board candidates on local time; cross-board candidates on receipt-qualified PPS epochs',
                        **self.router.summary(now),
                        pre_us=self.config.pre_us, post_us=self.config.post_us,
                        beam_delay_us=self.config.beam_delay_us,
