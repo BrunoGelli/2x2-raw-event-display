@@ -11,9 +11,11 @@ reconstruction, or the HTTP/WebSocket protocol.
    appearance. The light theme adjusts the UI, 2D pixels, trigger candidates,
    and WebGL scene colors. The choice persists in browser-local storage.
    Candidate highlights are source-specific in either mode: Beam is yellow
-   (`#ffe923`) on dark or blue (`#1d59b3`) on light; Light is red
+   (`#ffe923`) on dark or deeper blue (`#0037c8`) on light; Light is red
    (`#ff5c70`) on dark or the existing brown (`#8f5f00`) on light.
-   This fixed palette applies equally in normal and kiosk views.
+   This fixed palette applies equally in normal and kiosk views. In combined
+   Beam + Light mode, duplicate charge hits are drawn once (Beam priority);
+   selecting Light alone restores its full reconstructed point cloud.
 3. In the 3D view, choose **Auto-rotate: On** to orbit continuously around the
    detector; normal mouse orbit/zoom still works. This control is not shown for 2D.
 4. Click **Kiosk**. The selected plot fills the entire screen, with a **transparent

@@ -119,7 +119,7 @@ export async function createDetector3D(meta,rawPixels,holder){
     controls.autoRotateSpeed=0.9;
   }
   setTheme(document.documentElement.dataset.theme||'dark');
-  let origin=new Float64Array(8).fill(NaN),normalVersion=null,pairVersion=null,lastSize='',pausedBefore=null,lastTau=null;
+  let origin=new Float64Array(8).fill(NaN),normalVersion=null,pairVersion=null,renderedSource=null,lastSize='',pausedBefore=null,lastTau=null;
   let lastControlUpdate=performance.now();
   const diagnostics={clampedCandidates:0,rejectedCandidates:0,draws:0,geometryPixels:n};
   function render({normal,clocks,normalRevision,paused,tau,mode,source,fresh}){
@@ -150,8 +150,9 @@ export async function createDetector3D(meta,rawPixels,holder){
       upload(c,count);diagnostics.normalPoints=count;normalVersion=normalRevision;
     }
     const pairs=window.rawDriftData.current(),revision=window.rawDriftData.version();
-    if(pairs&&(rebased||pairVersion!==revision)){
-      let clamped=0,rejected=0;
+    // Selector changes rebuild Light points previously hidden by Beam priority.
+    if(pairs&&(rebased||pairVersion!==revision||renderedSource!==source)){
+      let clamped=0,rejected=0,suppressedLight=0;
       for(const name of ['beam','light']){
         const c=clouds[name],p=pairs[name];let count=0;c.lookup.fill(-1);
         for(let id=0;id<n;id++){
@@ -159,13 +160,20 @@ export async function createDetector3D(meta,rawPixels,holder){
           const drift=window.rawDriftData.driftDistance(p.delta[id],meta.timing_config.tick_seconds,g);
           clamped+=Number(drift.clamped);rejected+=Number(!drift.valid);
           if(!drift.valid||clocks[iogs[id]+1]/1000-p.hits[id]>8*tau)continue;
+          // Only hide the same physical charge hit, and only if its Beam
+          // reconstruction passed the geometry and freshness checks.
+          if(name==='light'&&window.rawDriftData.hideCoincidentLight(
+              source,pairs.beam.hits[id],p.hits[id],clouds.beam.lookup[id]>=0)){
+            suppressedLight++;continue;
+          }
           c.lookup[id]=count;c.times[count]=p.hits[id]-origin[iogs[id]];c.groups[count]=iogs[id];
           c.positions[count*3]=xyz[id*3]+signs[id]*drift.distance;
           c.positions[count*3+1]=xyz[id*3+1];c.positions[count*3+2]=xyz[id*3+2];count++;
         }
         upload(c,count);diagnostics[name+'Points']=count;
       }
-      diagnostics.clampedCandidates=clamped;diagnostics.rejectedCandidates=rejected;pairVersion=revision;
+      diagnostics.clampedCandidates=clamped;diagnostics.rejectedCandidates=rejected;
+      diagnostics.suppressedLightPoints=suppressedLight;pairVersion=revision;renderedSource=source;
     }
     clouds.normal.points.visible=mode!=='only';
     clouds.beam.points.visible=mode!=='all'&&(source==='both'||source==='beam');

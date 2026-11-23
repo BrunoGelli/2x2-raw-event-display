@@ -282,7 +282,7 @@ async function main(){
     if(!is3d)return;
     try{
       if(window.rawDriftData.state.error)throw Error(window.rawDriftData.state.error);
-      if(!loading3d)loading3d=import('/static/display3d.js?v=trigger-colors-1').then(m=>m.createDetector3D(meta,pixels,$('detector3d-canvas')));
+      if(!loading3d)loading3d=import('/static/display3d.js?v=beam-priority-1').then(m=>m.createDetector3D(meta,pixels,$('detector3d-canvas')));
       detector3d=await loading3d;
       window.rawKioskUI?.on3DReady(detector3d);
       window.rawDriftData.state.wanted=$('module').value==='3d';

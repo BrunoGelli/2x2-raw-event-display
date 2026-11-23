@@ -53,7 +53,12 @@
     return {valid:true,distance:Math.min(distance,metadata.max_drift_distance_mm),
       clamped:distance>metadata.max_drift_distance_mm};
   }
-  root.rawDriftData={state,configure,reset,setPaused,receiveFrame,driftDistance,
+  // Presentation only: same pixel and exact ASIC timestamp = one charge hit.
+  // Never globally veto independent Light hits during a Beam spill.
+  function hideCoincidentLight(source,beamHit,lightHit,beamDrawn){
+    return source==='both'&&beamDrawn&&beamHit>=0&&lightHit>=0&&beamHit===lightHit;
+  }
+  root.rawDriftData={state,configure,reset,setPaused,receiveFrame,driftDistance,hideCoincidentLight,
     current:()=>state.paused?state.frozen:state.pairs,
     version:()=>state.paused?state.frozenVersion:state.version};
 })(typeof window!=='undefined'?window:globalThis);
