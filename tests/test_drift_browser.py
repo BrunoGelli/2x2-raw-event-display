@@ -81,11 +81,13 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         page.wait_for_function('window.rawDriftData.state.frames>1')
         page.wait_for_timeout(1200)
         metrics['3d']=page.evaluate('({fps:document.getElementById("fps").textContent,...window.rawDisplayDiagnostics().view3d})')
+        assert page.evaluate('window.rawDisplay3D().colors()') == dict(normal='61f5be', beam='ffe923', light='ff5c70')
         assert page.locator('#modules').is_hidden()
         assert page.locator('#detector3d').is_visible()
         # Presentation controls must not affect the live display subscription.
         page.click('#theme-toggle')
         assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+        assert page.evaluate('window.rawDisplay3D().colors()') == dict(normal='087b57', beam='1d59b3', light='8f5f00')
         page.click('#spin-toggle')
         assert page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
         page.click('#kiosk-enter')
@@ -113,6 +115,7 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         assert not page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
         page.click('#theme-toggle')
         assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
+        assert page.evaluate('window.rawDisplay3D().colors()') == dict(normal='61f5be', beam='ffe923', light='ff5c70')
         ids=[e['id'] for e in expected]
         actual=np.array(page.evaluate("ids=>ids.map(id=>window.rawDisplay3D().position('light',id))",ids))
         target=np.array([[e[k] for k in ('x_mm','y_mm','z_mm')] for e in expected])

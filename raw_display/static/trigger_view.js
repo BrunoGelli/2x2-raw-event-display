@@ -5,7 +5,12 @@
     paused:false,link:false,at:-Infinity,source:'both',sourceProtocol:false,
     layers:{},frozenLayers:null,routing:{},meta:null,statusAt:-Infinity,alignment:null,healthy:false,
     sources:Array.from({length:9},()=>({count:null,age:null,at:0,pulse:0}))};
-  const LIGHT_BASE=[244,248,251],LIGHT_ACTIVE=[143,95,0];
+  const DARK_BASE=[4,13,20],LIGHT_BASE=[244,248,251];
+  // Shared with the optional 3D renderer; neither theme affects timing or source selection.
+  const TRIGGER_COLORS=Object.freeze({
+    dark:Object.freeze({beam:Object.freeze([255,233,35]),light:Object.freeze([255,92,112])}),
+    light:Object.freeze({beam:Object.freeze([29,89,179]),light:Object.freeze([143,95,0])})
+  });
   const element=id=>typeof document!=='undefined'?document.getElementById(id):null;
   function reset(){
     state.tagged.fill(-1);for(const a of Object.values(state.layers))a.fill(-1);
@@ -106,6 +111,13 @@
     const layers=state.paused?state.frozenLayers:state.layers;
     return state.source==='both'?Math.max(layers.beam[id],layers.light[id]):layers[state.source][id];
   }
+  function hitSource(id){
+    // Match the existing most-recent-time rule; Beam wins exact ties.
+    if(!state.sourceProtocol)return 'beam'; // legacy, untyped RDT1 stays yellow/blue
+    if(state.source!=='both')return state.source;
+    const layers=state.paused?state.frozenLayers:state.layers;
+    return layers.beam[id]>=layers.light[id]?'beam':'light';
+  }
   function receiveStatus(packet,now){
     state.statusAt=now;state.healthy=packet.collector_healthy===true;
     state.alignment=packet.trigger_alignment??null;
@@ -134,43 +146,36 @@
       text=`Detector-wide windows: ${meta.trigger_pre_us??0} µs before to ${meta.trigger_post_us??190} µs after t0. `+
         `Beam = IOG ${state.routing.beam}; Light = IOG ${state.routing.light}. ${timing}. `+
         (v.known&&missing.length?`Unqualified IOGs: ${missing.join(', ')}. `:'')+
-        'Yellow = temporal candidate, not a complete event. Cross-IOG windows require receipt-aligned PPS epochs. Same-board matching uses local time.';
+        (state.lightTheme?'Beam blue / Light brown':'Beam yellow / Light red')+
+        ' = temporal candidates, not complete events. Cross-IOG windows require receipt-aligned PPS epochs. Same-board matching uses local time.';
     }
     if(note.textContent!==text)note.textContent=text;
   }
   function paint(rgba,at,id,now,brightness,normalBrightness){
     if(!state.enabled||state.mode==='all')return;
     const t=hitTime(id);
+    // The source and its timestamp use the same selection, including paused snapshots.
+    const base=state.lightTheme?LIGHT_BASE:DARK_BASE;
+    const active=TRIGGER_COLORS[state.lightTheme?'light':'dark'][hitSource(id)];
     // Future timestamps never become visible before the detector playhead.
     const index=t<0||t>now?brightness.length-1:Math.min(brightness.length-1,Math.floor((now-t)/16));
     const v=brightness[index],level=v/255;
-    if(state.lightTheme){
-      // Dark amber on a pale background; in 'only' mode empty pixels stay pale.
-      const base=LIGHT_BASE,active=LIGHT_ACTIVE;
-      if(state.mode==='only'){
-        for(let k=0;k<3;k++)rgba[at+k]=Math.round(base[k]+(active[k]-base[k])*level);
-      }else if(v){
-        const mix=Math.min(1,v/Math.max(1,normalBrightness));
-        for(let k=0;k<3;k++){
-          const target=base[k]+(active[k]-base[k])*level;
-          rgba[at+k]=Math.round(rgba[at+k]*(1-mix)+target*mix);
-        }
-      }
-      return;
-    }
     if(state.mode==='only'){
-      rgba[at]=Math.round(4+251*level);rgba[at+1]=Math.round(13+220*level);rgba[at+2]=Math.round(20+15*level);
+      for(let k=0;k<3;k++)rgba[at+k]=Math.round(base[k]+(active[k]-base[k])*level);
     }else if(v){
       const mix=Math.min(1,v/Math.max(1,normalBrightness));
-      const target=[4+251*level,13+220*level,20+15*level];
-      for(let k=0;k<3;k++)rgba[at+k]=Math.round(rgba[at+k]*(1-mix)+target[k]*mix);
+      for(let k=0;k<3;k++){
+        const target=base[k]+(active[k]-base[k])*level;
+        rgba[at+k]=Math.round(rgba[at+k]*(1-mix)+target*mix);
+      }
     }
   }
   function hover(id,now){
     const t=hitTime(id);
-    return state.enabled&&t>=0&&t<=now?`\nLatest ${state.sourceProtocol?state.source+' detector-wide':'same-IOG'} trigger-window hit: ${((now-t)/1000).toFixed(3)} s old` : '';
+    const label=state.sourceProtocol?hitSource(id)+' detector-wide':'same-IOG';
+    return state.enabled&&t>=0&&t<=now?`\nLatest ${label} trigger-window hit: ${((now-t)/1000).toFixed(3)} s old` : '';
   }
-  root.rawTriggerUI={state,reset,configure,receiveMeta,receiveStatus,receiveFrame,renderBadges,setPaused,paint,hover,badge,hitTime,alignmentView,
-                     setTheme:mode=>{state.lightTheme=mode==='light';},
+  root.rawTriggerUI={state,reset,configure,receiveMeta,receiveStatus,receiveFrame,renderBadges,setPaused,paint,hover,badge,hitTime,hitSource,alignmentView,colors:TRIGGER_COLORS,
+                     setTheme:mode=>{state.lightTheme=mode==='light';renderAlignment(state.statusAt);},
                      disconnect:()=>{state.link=false;}};
 })(typeof window!=='undefined'?window:globalThis);
