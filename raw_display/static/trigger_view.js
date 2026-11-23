@@ -9,7 +9,7 @@
   // Shared with the optional 3D renderer; neither theme affects timing or source selection.
   const TRIGGER_COLORS=Object.freeze({
     dark:Object.freeze({beam:Object.freeze([255,233,35]),light:Object.freeze([255,92,112])}),
-    light:Object.freeze({beam:Object.freeze([29,89,179]),light:Object.freeze([143,95,0])})
+    light:Object.freeze({beam:Object.freeze([0,55,200]),light:Object.freeze([143,95,0])})
   });
   const element=id=>typeof document!=='undefined'?document.getElementById(id):null;
   function reset(){
@@ -147,7 +147,7 @@
         `Beam = IOG ${state.routing.beam}; Light = IOG ${state.routing.light}. ${timing}. `+
         (v.known&&missing.length?`Unqualified IOGs: ${missing.join(', ')}. `:'')+
         (state.lightTheme?'Beam blue / Light brown':'Beam yellow / Light red')+
-        ' = temporal candidates, not complete events. Cross-IOG windows require receipt-aligned PPS epochs. Same-board matching uses local time.';
+        ' = temporal candidates, not complete events. Beam takes priority for duplicate charge hits in Beam + Light. Cross-IOG windows require receipt-aligned PPS epochs. Same-board matching uses local time.';
     }
     if(note.textContent!==text)note.textContent=text;
   }

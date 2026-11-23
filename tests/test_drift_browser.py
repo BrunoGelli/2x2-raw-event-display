@@ -87,7 +87,7 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         # Presentation controls must not affect the live display subscription.
         page.click('#theme-toggle')
         assert page.evaluate("document.documentElement.dataset.theme") == 'light'
-        assert page.evaluate('window.rawDisplay3D().colors()') == dict(normal='087b57', beam='1d59b3', light='8f5f00')
+        assert page.evaluate('window.rawDisplay3D().colors()') == dict(normal='087b57', beam='0037c8', light='8f5f00')
         page.click('#spin-toggle')
         assert page.evaluate("window.rawDisplay3D().autoRotateEnabled()")
         page.click('#kiosk-enter')
@@ -124,6 +124,17 @@ def test_actual_webgl_track_switch_pause_source_and_failure():
         page.select_option('#trigger-source','both')
         page.wait_for_function('window.rawDisplay3D().visibility().beam')
         assert page.evaluate('window.rawDisplay3D().visibility()')==dict(normal=False,beam=True,light=True)
+        # Both synthetic triggers tag the exact same charge packets.
+        page.wait_for_function('id=>window.rawDisplay3D().position("light",id)===null',arg=pid)
+        assert page.evaluate('id=>window.rawDisplay3D().position("beam",id)!==null',pid)
+        assert page.evaluate('window.rawDisplay3D().diagnostics.suppressedLightPoints')>0
+        # Switching to Light-only must restore its unchanged reconstruction.
+        page.select_option('#trigger-source','light')
+        page.wait_for_function('id=>window.rawDisplay3D().position("light",id)!==null',arg=pid)
+        page.select_option('#trigger-source','both')
+        page.wait_for_function('id=>window.rawDisplay3D().position("light",id)===null',arg=pid)
+        page.select_option('#trigger-source','light')
+        page.wait_for_function('id=>window.rawDisplay3D().position("light",id)!==null',arg=pid)
         page.select_option('#trigger-mode','highlight')
         page.wait_for_function('window.rawDisplay3D().visibility().normal')
         assert page.evaluate('window.rawDisplay3D().visibility().normal')

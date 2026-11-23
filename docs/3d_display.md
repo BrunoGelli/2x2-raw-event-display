@@ -20,13 +20,21 @@ The default 2D/3D candidate window is now `[t0,t0+190 us)`; the existing
 | Window hits only | Source-colored reconstructed candidates only. |
 
 In dark mode, Beam candidates are yellow (`#ffe923`) and Light candidates are red
-(`#ff5c70`). In light mode, Beam candidates are blue (`#1d59b3`) and Light
-candidates retain dark brown (`#8f5f00`). Both the 2D canvas and 3D WebGL
-renderer use the same palette. With **Beam + Light** selected, 3D retains
-independent colored clouds for each source. In 2D, if both sources tag a pixel,
-the newest tagged hit determines its color (Beam wins an exact tie). These
-are temporal candidates, not particle-identification labels. No timing, drift,
-or trigger association settings change.
+(`#ff5c70`). In light mode, Beam candidates are now deeper blue (`#0037c8`)
+and Light candidates retain dark brown (`#8f5f00`). Both the 2D canvas and
+3D WebGL renderer use the same palette.
+
+When **Beam + Light** associates the **same pixel and exact ASIC hit time** to
+both sources, show only the Beam candidate. The 2D canvas already chose Beam
+for equal timestamps; the 3D renderer now hides the Light duplicate *only if
+the corresponding Beam point passed its drift/fade checks*. Distinct Light
+charge hits remain visible, even during a spill; selecting **Light** alone
+restores its complete reconstruction, including any coincident hits hidden
+from the combined view. For different latest hit times on the same pixel,
+2D still shows the newest hit. No event-wide Light-trigger veto is applied.
+
+These are temporal candidates, not particle-identification labels. No timing,
+drift, or trigger association settings change.
 
 The existing Beam / Light / Beam + Light selector applies independently.
 IOG5 supplies Beam t0; IOG6 supplies Light t0; eligible triggers propagate over

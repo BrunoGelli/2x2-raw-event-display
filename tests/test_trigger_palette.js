@@ -10,7 +10,7 @@ ui.configure({time_basis:'asic',trigger_view_enabled:true,trigger_source_protoco
   trigger_sources:{beam:5,light:6},n_pixels:4,iogs:[1,5,6]});
 const palettes={
   dark:{beam:[255,233,35],light:[255,92,112],base:[4,13,20]},
-  light:{beam:[29,89,179],light:[143,95,0],base:[244,248,251]}
+  light:{beam:[0,55,200],light:[143,95,0],base:[244,248,251]}
 };
 const brightness=new Uint8Array([255,128,0]);
 function frame(magic,id,t){
@@ -55,7 +55,8 @@ ui.receiveFrame(frame(0x52444231,2,1.032));
 assert.equal(ui.hitSource(2),'beam');
 assert.deepEqual(draw(2,1032),palettes.dark.beam,'later Beam wins overlap');
 ui.receiveFrame(frame(0x52444c31,2,1.032));
-assert.equal(ui.hitSource(2),'beam','Beam wins exact ties');
+assert.equal(ui.hitSource(2),'beam','Beam wins exact same-charge-hit ties');
+assert.deepEqual(draw(2,1032),palettes.dark.beam,'overlapping hit is colored once');
 assert.match(ui.hover(2,1032),/beam detector-wide/);
 ui.setPaused(true);
 ui.receiveFrame(frame(0x52444c31,2,2));

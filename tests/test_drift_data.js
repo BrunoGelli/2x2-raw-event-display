@@ -22,4 +22,14 @@ data.receiveFrame(frame([[0,0,10,12],[99,0,10,12]]));
 assert.equal(data.current().beam.hits[0],-1);assert.equal(data.state.invalidFrames,1);
 const normal=new ArrayBuffer(12);new DataView(normal).setUint32(0,0x52445032,false);
 assert.equal(data.receiveFrame(normal),false);
-console.log('R3D1 precision, atomic frame validation, bounds, pause and failure isolation passed');
+// A coincident Beam+Light readout must be drawn once, but unrelated Light
+// activity remains independent and Light-only restores the original pairs.
+assert(data.hideCoincidentLight('both',1000000.25,1000000.25,true));
+assert(!data.hideCoincidentLight('both',1000000.25,1000000.2500001,true));
+assert(!data.hideCoincidentLight('light',1000000.25,1000000.25,true));
+assert(!data.hideCoincidentLight('beam',1000000.25,1000000.25,true));
+assert(!data.hideCoincidentLight('both',1000000.25,1000000.25,false));
+assert(!data.hideCoincidentLight('both',-1,1000000.25,true));
+assert(!data.hideCoincidentLight('both',1000000.25,-1,true));
+assert(data.hideCoincidentLight('both',0,0,true));
+console.log('R3D1 precision, validation, pause, overlap priority and failure isolation passed');
