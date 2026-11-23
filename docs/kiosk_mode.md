@@ -10,6 +10,10 @@ reconstruction, or the HTTP/WebSocket protocol.
 2. Optionally choose **Light mode**. The default is the original dark phosphor
    appearance. The light theme adjusts the UI, 2D pixels, trigger candidates,
    and WebGL scene colors. The choice persists in browser-local storage.
+   Candidate highlights are source-specific in either mode: Beam is yellow
+   (`#ffe923`) on dark or blue (`#1d59b3`) on light; Light is red
+   (`#ff5c70`) on dark or the existing brown (`#8f5f00`) on light.
+   This fixed palette applies equally in normal and kiosk views.
 3. In the 3D view, choose **Auto-rotate: On** to orbit continuously around the
    detector; normal mouse orbit/zoom still works. This control is not shown for 2D.
 4. Click **Kiosk**. The selected plot fills the entire screen, with a **transparent

@@ -90,7 +90,9 @@ export async function createDetector3D(meta,rawPixels,holder){
     const points=new THREE.Points(geometry,material);points.frustumCulled=false;scene.add(points);
     return {points,positions,times,groups,lookup,geometry};
   }
-  const clouds={normal:cloud(0x61f5be),beam:cloud(0xffe923),light:cloud(0xffe923)};
+  const toHex=rgb=>(rgb[0]<<16)|(rgb[1]<<8)|rgb[2];
+  const triggerColors=window.rawTriggerUI.colors; // same palette as the 2D phosphor view
+  const clouds={normal:cloud(0x61f5be),beam:cloud(toHex(triggerColors.dark.beam)),light:cloud(toHex(triggerColors.dark.light))};
   function setTheme(theme){
     const light=theme==='light';
     renderer.setClearColor(light?0xf4f8fb:0x07121a);
@@ -106,7 +108,8 @@ export async function createDetector3D(meta,rawPixels,holder){
     const arrowColors=[0x99464d,0x297b4a,0x376ba6];
     themeArrows.forEach(({arrow,color},i)=>arrow.setColor(light?arrowColors[i]:color));
     for(const [name,c] of Object.entries(clouds)){
-      c.points.material.uniforms.uColor.value.set(light?(name==='normal'?0x087b57:0x956900):(name==='normal'?0x61f5be:0xffe923));
+      const hue=name==='normal'?(light?0x087b57:0x61f5be):toHex(triggerColors[light?'light':'dark'][name]);
+      c.points.material.uniforms.uColor.value.set(hue);
       c.points.material.blending=light?THREE.NormalBlending:THREE.AdditiveBlending;
       c.points.material.needsUpdate=true;
     }
@@ -173,5 +176,6 @@ export async function createDetector3D(meta,rawPixels,holder){
     controls.update(delta);renderer.render(scene,camera);diagnostics.draws++;
   }
   return {render,reset,setTheme,setAutoRotate,autoRotateEnabled:()=>controls.autoRotate,diagnostics,position:(name,id)=>{const c=clouds[name],at=c.lookup[id];return at<0?null:Array.from(c.positions.subarray(at*3,at*3+3));},
-    visibility:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.visible]))};
+    visibility:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.visible])),
+    colors:()=>Object.fromEntries(Object.entries(clouds).map(([name,c])=>[name,c.points.material.uniforms.uColor.value.getHexString()]))};
 }

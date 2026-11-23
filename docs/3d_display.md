@@ -16,8 +16,17 @@ The default 2D/3D candidate window is now `[t0,t0+190 us)`; the existing
 | Trigger view | 3D behavior |
 |---|---|
 | All hits | Latest ordinary hits glow on their physical anode planes. |
-| Highlight windows | Green anode activity plus yellow reconstructed candidates. |
-| Window hits only | Yellow reconstructed candidates only. |
+| Highlight windows | Green anode activity plus source-colored reconstructed candidates. |
+| Window hits only | Source-colored reconstructed candidates only. |
+
+In dark mode, Beam candidates are yellow (`#ffe923`) and Light candidates are red
+(`#ff5c70`). In light mode, Beam candidates are blue (`#1d59b3`) and Light
+candidates retain dark brown (`#8f5f00`). Both the 2D canvas and 3D WebGL
+renderer use the same palette. With **Beam + Light** selected, 3D retains
+independent colored clouds for each source. In 2D, if both sources tag a pixel,
+the newest tagged hit determines its color (Beam wins an exact tie). These
+are temporal candidates, not particle-identification labels. No timing, drift,
+or trigger association settings change.
 
 The existing Beam / Light / Beam + Light selector applies independently.
 IOG5 supplies Beam t0; IOG6 supplies Light t0; eligible triggers propagate over
