@@ -68,8 +68,8 @@ assert.deepEqual(draw(2,2000),palettes.dark.light);
 ui.configure({time_basis:'asic',trigger_view_enabled:true,n_pixels:4});
 ui.state.mode='only';ui.state.tagged[0]=1000;ui.setTheme('dark');
 assert.deepEqual(draw(0,1000),palettes.dark.beam,'untyped legacy windows keep their original yellow');
-ui.setTheme('light');assert.deepEqual(draw(0,1000),palettes.light.beam,
-  'legacy fallback uses the default Beam hue');
+ui.setTheme('light');assert.deepEqual(draw(0,1000),palettes.light.light,
+  'untyped legacy windows retain their original brown on light');
 const source3d=fs.readFileSync(path.join(__dirname,'../raw_display/static/display3d.js'),'utf8');
 assert.match(source3d,/window\.rawTriggerUI\.colors/,'3D must use the shared color palette');
 assert.match(source3d,/toHex\(triggerColors\[light\?'light':'dark'\]\[name\]\)/);

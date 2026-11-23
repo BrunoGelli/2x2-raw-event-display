@@ -113,7 +113,7 @@
   }
   function hitSource(id){
     // Match the existing most-recent-time rule; Beam wins exact ties.
-    if(!state.sourceProtocol)return 'beam'; // legacy, untyped RDT1 stays yellow/blue
+    if(!state.sourceProtocol)return 'beam'; // fallback identity only; untyped color stays legacy
     if(state.source!=='both')return state.source;
     const layers=state.paused?state.frozenLayers:state.layers;
     return layers.beam[id]>=layers.light[id]?'beam':'light';
@@ -156,7 +156,10 @@
     const t=hitTime(id);
     // The source and its timestamp use the same selection, including paused snapshots.
     const base=state.lightTheme?LIGHT_BASE:DARK_BASE;
-    const active=TRIGGER_COLORS[state.lightTheme?'light':'dark'][hitSource(id)];
+    const theme=state.lightTheme?'light':'dark';
+    // RDT1 predates source tags: preserve its original yellow/dark, brown/light appearance.
+    const active=state.sourceProtocol?TRIGGER_COLORS[theme][hitSource(id)]:
+      TRIGGER_COLORS[theme][state.lightTheme?'light':'beam'];
     // Future timestamps never become visible before the detector playhead.
     const index=t<0||t>now?brightness.length-1:Math.min(brightness.length-1,Math.floor((now-t)/16));
     const v=brightness[index],level=v/255;
