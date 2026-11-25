@@ -19,6 +19,11 @@
     return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond} ${p.timeZoneName}`;
   }
   function epochSeconds(source,period){
+    if(source && 'epoch_second' in source){
+      const epoch=source.epoch_second;
+      return Number.isSafeInteger(epoch)&&epoch>0&&Number.isSafeInteger(epoch*1000)?epoch:null;
+    }
+    // Compatibility with older servers that only publish a reset-header label.
     // No conversion of offset_ticks (~1.8e16) to a JS Number is used here.
     if(!Number.isSafeInteger(period)||period<=0||
        !Number.isSafeInteger(source?.last_sync_tick)||source.last_sync_tick<0||
@@ -82,7 +87,7 @@
       const lagMin=server===null?null:server-max/1000,lagMax=server===null?null:server-min/1000;
       let kind=missing.length?'partial':buffering.length?'buffering':'running';
       if(lagMin!==null&&lagMin<-.05)kind='warning';
-      return {kind,reason:'Provisional header/PPS-labelled playheads',rows,missing,buffering,min,max,lagMin,lagMax};
+      return {kind,reason:'PPS-aligned display playheads',rows,missing,buffering,min,max,lagMin,lagMax};
     }
     setPaused(on,times,running,now){
       if(on&&!this.paused)this.frozen=this.sample(times,running,now);
@@ -114,7 +119,7 @@
       detail.textContent=text;
       box.title=m.rows.map(r=>`IOG ${r.iog}: ${formatTime(r.unixMs,this.zone)}`).join('\n')+
         '\nTime of the playback cursor, not a unique event or every fading hit. All configured panes are included, even when a module is hidden.'+
-        '\nPPS/header-labelled estimate, NOT a measured NTP lock or absolute timing certification.'+
+        '\nPPS epoch estimate, NOT a measured NTP lock or absolute timing certification.'+
         '\nLag uses the daq03 server clock, not browser time; return-network latency is not removed.';
     }
   }

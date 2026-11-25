@@ -153,3 +153,15 @@ test('clock reads playheads without mutating them',()=>{
   const f=fixture();Object.freeze(f.times);Object.freeze(f.running);const before=f.times.slice();
   sample(f);assert.deepEqual(f.times,before);
 });
+
+test('receipt-qualified epochs survive repeated and lagging reset headers',()=>{
+  const f=fixture();
+  for(const s of f.data.trigger_alignment.common_timing.sources){
+    s.epoch_second=s.last_header_second-s.last_sync_tick/R;
+    if(s.iog%2)s.last_header_second--;
+  }
+  assert.equal(sample(f).min,(U-1)*1000);
+  assert.equal(sample(f).max,sample(f).min);
+  f.data.trigger_alignment.common_timing.sources[0].epoch_second=null;
+  assert.deepEqual(sample(f).missing,[1]);
+});
